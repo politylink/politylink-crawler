@@ -7,7 +7,7 @@ authors = ["Mitsuki Usui"]
 [tool.poetry.dependencies]
 python = "^3.8"
 scrapy = "^2.2.1"
-politylink = "^0.1.4"
+politylink = "^0.1.5"
 
 [tool.poetry.dev-dependencies]
 
