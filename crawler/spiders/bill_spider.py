@@ -33,6 +33,8 @@ class BillSpider(scrapy.Spider):
                     self.merge_url_for_bill(url, bill)
                     LOGGER.debug(f'added {url_field} for {bill.id}')
 
+        LOGGER.info(f'saved {len(bills)} bills successfully')
+
     def merge_url_for_bill(self, url, bill):
         self.client.exec_merge_url(url)
         self.client.exec_merge_url_referred_bills(url.id, bill.id)
