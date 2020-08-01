@@ -11,5 +11,5 @@ poetry install
 ### Run
 
 ```
-poetry run scrapy crawl bill
+poetry run scrapy crawl shugiin
 ```
