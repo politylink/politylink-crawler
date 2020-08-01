@@ -31,19 +31,20 @@ class ShugiinSpider(scrapy.Spider):
             assert isinstance(bill, Bill)
             self.client.exec_merge_bill(bill)
             LOGGER.debug(f'merged {bill.id}')
-        LOGGER.info(f'merged {len(bills)} bills successfully')
+        LOGGER.info(f'merged {len(bills)} bills')
 
         for url in urls:
             assert isinstance(url, Url)
             self.client.exec_merge_url(url)
             self.client.exec_merge_url_referred_bills(url.id, url.meta['bill_id'])
             LOGGER.debug(f'merged {url.id}')
-        LOGGER.info(f'merged {len(urls)} urls successfully')
+        LOGGER.info(f'merged {len(urls)} urls')
 
         for url in urls:
             assert isinstance(url, Url)
             if url.title == '本文':
                 yield response.follow(url.url, callback=self.parse_honbun, meta=url.meta)
+        LOGGER.info(f'finished successfully')
 
     def parse_honbun(self, response):
         """
