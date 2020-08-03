@@ -1,17 +1,17 @@
 from logging import getLogger
-from urllib.parse import urljoin
 
 import scrapy
 
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Bill, Url
-from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
 
 
 class ShugiinSpider(scrapy.Spider):
-    name = "shugiin"
+    name = 'shugiin'
+    domain = 'shugiin.go.jp'
     start_urls = ['http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/menu.htm']
 
     def __init__(self, *args, **kwargs):
@@ -89,15 +89,6 @@ class ShugiinSpider(scrapy.Spider):
 
     @staticmethod
     def scrape_bills_and_urls_from_table(table, bill_category, response_url):
-        def extract_text(cell):
-            return cell.xpath('.//text()').get()
-
-        def extract_full_href_or_none(cell):
-            selector = cell.xpath('.//a/@href')
-            if len(selector) == 1:
-                return urljoin(response_url, selector[0].get())
-            return None
-
         bills, urls = [], []
         for row in table.xpath('./tr')[1:]:  # skip header
             cells = row.xpath('./td')
@@ -111,38 +102,21 @@ class ShugiinSpider(scrapy.Spider):
             except Exception as e:
                 LOGGER.warning(f'failed to parse row:\n{row.get()}\n{e}')
                 continue
-            bill = ShugiinSpider.build_bill(bill_category, diet_number, submission_number, bill_name)
+            bill = build_bill(bill_category, diet_number, submission_number, bill_name)
             bills.append(bill)
 
             # build keika URL if exists
-            maybe_keika_href = extract_full_href_or_none(cells[4])
+            maybe_keika_href = extract_full_href_or_none(cells[4], response_url)
             if maybe_keika_href:
-                url = ShugiinSpider.build_url(maybe_keika_href, '経過')
+                url = build_url(maybe_keika_href, title='経過', domain=ShugiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
             # build honbun URL if exists
             maybe_honbun_href = extract_full_href_or_none(cells[5])
             if maybe_honbun_href:
-                url = ShugiinSpider.build_url(maybe_honbun_href, '本文')
+                url = build_url(maybe_honbun_href, title='本文', domain=ShugiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
         return bills, urls
-
-    @staticmethod
-    def build_bill(bill_category, diet_number, submission_number, bill_name):
-        bill = Bill(None)
-        bill.name = bill_name
-        bill.bill_number = f'第{diet_number}回国会{bill_category}第{submission_number}号'
-        bill.id = idgen(bill)
-        return bill
-
-    @staticmethod
-    def build_url(href, title):
-        url = Url(None)
-        url.url = href
-        url.domain = 'shugiin.go.jp'
-        url.title = title
-        url.id = idgen(url)
-        return url

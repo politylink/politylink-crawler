@@ -12,4 +12,5 @@ poetry install
 
 ```
 poetry run scrapy crawl shugiin
+poetry run scrapy crawl sangiin
 ```
