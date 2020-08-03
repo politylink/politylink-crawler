@@ -113,7 +113,7 @@ class ShugiinSpider(scrapy.Spider):
                 urls.append(url)
 
             # build honbun URL if exists
-            maybe_honbun_href = extract_full_href_or_none(cells[5])
+            maybe_honbun_href = extract_full_href_or_none(cells[5], response_url)
             if maybe_honbun_href:
                 url = build_url(maybe_honbun_href, title='本文', domain=ShugiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
