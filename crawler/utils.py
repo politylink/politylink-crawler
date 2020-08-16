@@ -55,7 +55,7 @@ def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day)
 
 
-def extract_topics(topic_patterns, first_speech):
+def extract_topics(first_speech):
     def format_first_speech(speech):
         start_idx = re.search(r'本日の会議に付した案件', speech).end()
         speech = speech[start_idx:]
@@ -68,6 +68,8 @@ def extract_topics(topic_patterns, first_speech):
 
     topics = []
     first_speech = format_first_speech(first_speech)
+    topic_patterns = [re.compile(r'第(一|二|三|四|五|六|七|八|九|十)+\s\S+'),
+                      re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願)(\（.+\）)?')]
     for pattern in topic_patterns:
         for m in pattern.finditer(first_speech):
             topic = m.group()
@@ -78,4 +80,4 @@ def extract_topics(topic_patterns, first_speech):
             if topic not in topics:
                 topics.append(topic)
 
-    return topics if len(topics) > 0 else []
+    return topics

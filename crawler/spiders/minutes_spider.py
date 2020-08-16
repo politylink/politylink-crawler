@@ -1,7 +1,6 @@
 from logging import getLogger
 
 import json
-import re
 import scrapy
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, Speech
@@ -11,18 +10,11 @@ from crawler.utils import build_minutes, build_speech, extract_topics
 LOGGER = getLogger(__name__)
 
 
-MAX_NUM = 5
-OUTPUT_FORMAT = 'json'
-
-
 class MinutesSpider(scrapy.Spider):
     name = 'minutes'
     domain = 'kokkai.ndl.go.jp'
-    end_point = 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords={3}&recordPacking={4}'
     full2half = str.maketrans({'０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
                                '５': '5', '６': '6', '７': '7', '８': '8', '９': '9'})
-    topic_patterns = [re.compile(r'第(一|二|三|四|五|六|七|八|九|十)+\s\S+'),
-                      re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願)(\（.+\）)?')]
 
     def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
@@ -31,8 +23,12 @@ class MinutesSpider(scrapy.Spider):
         self.end_date = end_date
         self.next_pos = 1
 
+    def build_next_url(self):
+        return 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords=5&recordPacking=JSON'.format(
+            self.start_date, self.end_date, self.next_pos)
+
     def start_requests(self):
-        url = self.end_point.format(self.start_date, self.end_date, 1, MAX_NUM, OUTPUT_FORMAT)
+        url = self.build_next_url()
         yield scrapy.Request(url, self.parse)
 
     def parse(self, response):
@@ -62,7 +58,7 @@ class MinutesSpider(scrapy.Spider):
         self.next_pos = response_body['nextRecordPosition']
 
         if self.next_pos is not None:
-            url = self.end_point.format(self.start_date, self.end_date, self.next_pos, MAX_NUM, OUTPUT_FORMAT)
+            url = self.build_next_url()
             yield response.follow(url, callback=self.parse)
 
     def scrape_minutes_and_speeches(self, meeting_lst):
@@ -77,7 +73,7 @@ class MinutesSpider(scrapy.Spider):
 
             speeches = meeting['speechRecord']
             first_speech = speeches[0]['speech']
-            topics = extract_topics(self.topic_patterns, first_speech)
+            topics = extract_topics(first_speech)
             minutes = build_minutes(minutes_name, topics)
             minutes_lst.append(minutes)
 
