@@ -3,18 +3,15 @@ from logging import getLogger
 import json
 import re
 import scrapy
-import time
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, Speech
-from crawler.utils import build_minutes, build_speech
+from crawler.utils import build_minutes, build_speech, extract_topics
 
 
 LOGGER = getLogger(__name__)
 
 
-START_DAY = '2020-06-01'
-END_DAY = '2020-07-10'
-MAX_NUM = 5  # 仕様書には、会議単位出力の場合は「1～30」の範囲で指定可能と書いてあるが、5より大きいとエラーが出る
+MAX_NUM = 5
 OUTPUT_FORMAT = 'json'
 
 
@@ -22,35 +19,30 @@ class MinutesSpider(scrapy.Spider):
     name = 'minutes'
     domain = 'kokkai.ndl.go.jp'
     end_point = 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords={3}&recordPacking={4}'
-    next_pos = 1
-    meeting_lst = []
     full2half = str.maketrans({'０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
                                '５': '5', '６': '6', '７': '7', '８': '8', '９': '9'})
     topic_patterns = [re.compile(r'第(一|二|三|四|五|六|七|八|九|十)+\s\S+'),
                       re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願)(\（.+\）)?')]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.client = GraphQLClient()
+        self.start_date = start_date
+        self.end_date = end_date
+        self.next_pos = 1
 
     def start_requests(self):
-        """
-        公式APIを用いて対象期間の議事録を取得する
-        """
-
-        while self.next_pos is not None:
-            url = self.end_point.format(START_DAY, END_DAY, self.next_pos, MAX_NUM, OUTPUT_FORMAT)
-            LOGGER.info(f'requested {url}')
-            yield scrapy.Request(url, self.parse)
-            time.sleep(3)
+        url = self.end_point.format(self.start_date, self.end_date, 1, MAX_NUM, OUTPUT_FORMAT)
+        yield scrapy.Request(url, self.parse)
 
     def parse(self, response):
         """
         Minutes, SpeechをGraphQLに保存する
         """
 
-        response = json.loads(response.body)
-        meeting_lst = response['meetingRecord']
+        LOGGER.info(f'requested {response.url}')
+        response_body = json.loads(response.body)
+        meeting_lst = response_body['meetingRecord']
         minutes, speeches = self.scrape_minutes_and_speeches(meeting_lst)
 
         for current_minutes in minutes:
@@ -66,8 +58,12 @@ class MinutesSpider(scrapy.Spider):
             LOGGER.debug(f'merged {speech.id}')
         LOGGER.info(f'merged {len(speeches)} speeches')
 
-        # get next start position of record
-        self.next_pos = response['nextRecordPosition']
+        # set next start position of record
+        self.next_pos = response_body['nextRecordPosition']
+
+        if self.next_pos is not None:
+            url = self.end_point.format(self.start_date, self.end_date, self.next_pos, MAX_NUM, OUTPUT_FORMAT)
+            yield response.follow(url, callback=self.parse)
 
     def scrape_minutes_and_speeches(self, meeting_lst):
         """
@@ -81,7 +77,7 @@ class MinutesSpider(scrapy.Spider):
 
             speeches = meeting['speechRecord']
             first_speech = speeches[0]['speech']
-            topics = self.extract_topics(first_speech)
+            topics = extract_topics(self.topic_patterns, first_speech)
             minutes = build_minutes(minutes_name, topics)
             minutes_lst.append(minutes)
 
@@ -94,29 +90,3 @@ class MinutesSpider(scrapy.Spider):
                 speech_lst.append(speech)
 
         return minutes_lst, speech_lst
-
-    def extract_topics(self, first_speech):
-        def format_first_speech(speech):
-            start_idx = re.search(r'本日の会議に付した案件', speech).end()
-            speech = speech[start_idx:]
-            if re.search(r'\r\n○', speech) is not None:
-                speech = speech.replace('\r\n\u3000', '')
-                speech = speech.replace('\r\n○', '\r\n\u3000')
-            else:
-                speech = speech.replace('\r\n\u3000\u3000', '')
-            return speech
-
-        topics = []
-        first_speech = format_first_speech(first_speech)
-        for pattern in self.topic_patterns:
-            for m in pattern.finditer(first_speech):
-                topic = m.group()
-                topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
-                # remove brackets and text
-                topic = re.sub(r'(\(|（)[^)]*(\)|）)?', '', topic)
-                topic = topic.strip()
-                if topic not in topics:
-                    topics.append(topic)
-
-        return topics if len(topics) > 0 else []
-

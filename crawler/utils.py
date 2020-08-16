@@ -1,5 +1,7 @@
 from urllib.parse import urljoin
 
+import re
+
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput
 from politylink.idgen import idgen
 
@@ -51,3 +53,29 @@ def build_speech(speech_name, speaker, order):
 
 def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day)
+
+
+def extract_topics(topic_patterns, first_speech):
+    def format_first_speech(speech):
+        start_idx = re.search(r'本日の会議に付した案件', speech).end()
+        speech = speech[start_idx:]
+        if re.search(r'\r\n○', speech) is not None:
+            speech = speech.replace('\r\n\u3000', '')
+            speech = speech.replace('\r\n○', '\r\n\u3000')
+        else:
+            speech = speech.replace('\r\n\u3000\u3000', '')
+        return speech
+
+    topics = []
+    first_speech = format_first_speech(first_speech)
+    for pattern in topic_patterns:
+        for m in pattern.finditer(first_speech):
+            topic = m.group()
+            topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
+            # remove brackets and text
+            topic = re.sub(r'(\(|（)[^)]*(\)|）)?', '', topic)
+            topic = topic.strip()
+            if topic not in topics:
+                topics.append(topic)
+
+    return topics if len(topics) > 0 else []
