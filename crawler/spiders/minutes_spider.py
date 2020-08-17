@@ -6,7 +6,7 @@ import scrapy
 
 from crawler.utils import build_minutes, build_speech, extract_topics
 from politylink.graphql.client import GraphQLClient
-from politylink.graphql.schema import Minutes, Speech
+from politylink.graphql.schema import Minutes
 from politylink.helpers import BillFinder
 
 LOGGER = getLogger(__name__)
@@ -70,15 +70,19 @@ class MinutesSpider(scrapy.Spider):
         minutes_lst, speech_lst = [], []
 
         for meeting_rec in response_body['meetingRecord']:
-            minutes = build_minutes(
-                int(meeting_rec['session']),
-                meeting_rec['nameOfHouse'],
-                meeting_rec['nameOfMeeting'],
-                int(meeting_rec['issue'][1:-1]),  # drop 第 and 号
-                extract_topics(meeting_rec['speechRecord'][0]['speech']),
-                meeting_rec['meetingURL'],
-                datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
-            )
+            try:
+                minutes = build_minutes(
+                    int(meeting_rec['session']),
+                    meeting_rec['nameOfHouse'],
+                    meeting_rec['nameOfMeeting'],
+                    int(meeting_rec['issue'][1:-1]),  # ToDo: fix failure of adhoc removal of 第 and 号
+                    extract_topics(meeting_rec['speechRecord'][0]['speech']),
+                    meeting_rec['meetingURL'],
+                    datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
+                )
+            except ValueError as e:
+                LOGGER.warning(f'failed to parse minutes: {e}')
+                continue
             minutes_lst.append(minutes)
 
             for speech_rec in meeting_rec['speechRecord']:
