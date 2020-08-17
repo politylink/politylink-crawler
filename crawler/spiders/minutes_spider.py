@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from logging import getLogger
 
 import scrapy
@@ -51,12 +52,13 @@ class MinutesSpider(scrapy.Spider):
                     self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
 
-        for speech in speech_lst:
-            assert isinstance(speech, Speech)
-            self.client.exec_merge_speech(speech)
-            self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
-            LOGGER.debug(f'merged {speech.id}')
-        LOGGER.info(f'merged {len(speech_lst)} speeches')
+        # ToDo: enable speech collection after implementing batch GraphQL method
+        # for speech in speech_lst:
+        #     assert isinstance(speech, Speech)
+        #     self.client.exec_merge_speech(speech)
+        #     self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
+        #     LOGGER.debug(f'merged {speech.id}')
+        # LOGGER.info(f'merged {len(speech_lst)} speeches')
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
@@ -73,7 +75,9 @@ class MinutesSpider(scrapy.Spider):
                 meeting_rec['nameOfHouse'],
                 meeting_rec['nameOfMeeting'],
                 int(meeting_rec['issue'][1:-1]),  # drop 第 and 号
-                extract_topics(meeting_rec['speechRecord'][0]['speech'])
+                extract_topics(meeting_rec['speechRecord'][0]['speech']),
+                meeting_rec['meetingURL'],
+                datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
             )
             minutes_lst.append(minutes)
 
