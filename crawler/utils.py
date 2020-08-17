@@ -1,6 +1,5 @@
-from urllib.parse import urljoin
-
 import re
+from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput
 from politylink.idgen import idgen
@@ -34,18 +33,18 @@ def build_url(href, title, domain):
     return url
 
 
-def build_minutes(minutes_name, topics):
+def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics):
     minutes = Minutes(None)
-    minutes.name = minutes_name
+    minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
     minutes.topics = topics
     minutes.id = idgen(minutes)
     return minutes
 
 
-def build_speech(speech_name, speaker, order):
+def build_speech(minutes_name, speaker_name, order):
     speech = Speech(None)
-    speech.name = speech_name
-    speech.speakerName = speaker
+    speech.name = f'{minutes_name}{order}'
+    speech.speakerName = speaker_name
     speech.orderInMinutes = order
     speech.id = idgen(speech)
     return speech
