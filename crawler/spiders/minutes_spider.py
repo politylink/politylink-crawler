@@ -6,6 +6,7 @@ import scrapy
 from crawler.utils import build_minutes, build_speech, extract_topics
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, Speech
+from politylink.helpers import BillFinder
 
 LOGGER = getLogger(__name__)
 
@@ -17,6 +18,7 @@ class MinutesSpider(scrapy.Spider):
     def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.client = GraphQLClient()
+        self.bill_finder = BillFinder()
         self.start_date = start_date
         self.end_date = end_date
         self.next_pos = 1
@@ -36,20 +38,25 @@ class MinutesSpider(scrapy.Spider):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes, speeches = self.scrape_minutes_and_speeches(response_body)
+        minutes_lst, speech_lst = self.scrape_minutes_and_speeches(response_body)
 
-        for current_minutes in minutes:
-            assert isinstance(current_minutes, Minutes)
-            self.client.exec_merge_minutes(current_minutes)
-            LOGGER.debug(f'merged {current_minutes.id}')
-        LOGGER.info(f'merged {len(minutes)} minutes')
+        for minutes in minutes_lst:
+            assert isinstance(minutes, Minutes)
+            self.client.exec_merge_minutes(minutes)
+            LOGGER.debug(f'merged {minutes.id}')
+            for topic in minutes.topics:
+                bills = self.bill_finder.find(topic)
+                LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
+                for bill in bills:
+                    self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
+        LOGGER.info(f'merged {len(minutes_lst)} minutes')
 
-        for speech in speeches:
+        for speech in speech_lst:
             assert isinstance(speech, Speech)
             self.client.exec_merge_speech(speech)
             self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
             LOGGER.debug(f'merged {speech.id}')
-        LOGGER.info(f'merged {len(speeches)} speeches')
+        LOGGER.info(f'merged {len(speech_lst)} speeches')
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
