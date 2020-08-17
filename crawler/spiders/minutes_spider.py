@@ -1,11 +1,11 @@
+import json
 from logging import getLogger
 
-import json
 import scrapy
+
+from crawler.utils import build_minutes, build_speech, extract_topics
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, Speech
-from crawler.utils import build_minutes, build_speech, extract_topics
-
 
 LOGGER = getLogger(__name__)
 
@@ -13,8 +13,6 @@ LOGGER = getLogger(__name__)
 class MinutesSpider(scrapy.Spider):
     name = 'minutes'
     domain = 'kokkai.ndl.go.jp'
-    full2half = str.maketrans({'０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
-                               '５': '5', '６': '6', '７': '7', '８': '8', '９': '9'})
 
     def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
@@ -38,8 +36,7 @@ class MinutesSpider(scrapy.Spider):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        meeting_lst = response_body['meetingRecord']
-        minutes, speeches = self.scrape_minutes_and_speeches(meeting_lst)
+        minutes, speeches = self.scrape_minutes_and_speeches(response_body)
 
         for current_minutes in minutes:
             assert isinstance(current_minutes, Minutes)
@@ -54,34 +51,31 @@ class MinutesSpider(scrapy.Spider):
             LOGGER.debug(f'merged {speech.id}')
         LOGGER.info(f'merged {len(speeches)} speeches')
 
-        # set next start position of record
         self.next_pos = response_body['nextRecordPosition']
-
         if self.next_pos is not None:
             url = self.build_next_url()
             yield response.follow(url, callback=self.parse)
 
-    def scrape_minutes_and_speeches(self, meeting_lst):
-        """
-        """
+    @staticmethod
+    def scrape_minutes_and_speeches(response_body):
         minutes_lst, speech_lst = [], []
 
-        for meeting in meeting_lst:
-            minutes_name = '第{0}回{1}{2}{3}'.format(
-                int(meeting['session']), meeting['nameOfHouse'],
-                meeting['nameOfMeeting'], meeting['issue'].translate(self.full2half))
-
-            speeches = meeting['speechRecord']
-            first_speech = speeches[0]['speech']
-            topics = extract_topics(first_speech)
-            minutes = build_minutes(minutes_name, topics)
+        for meeting_rec in response_body['meetingRecord']:
+            minutes = build_minutes(
+                int(meeting_rec['session']),
+                meeting_rec['nameOfHouse'],
+                meeting_rec['nameOfMeeting'],
+                int(meeting_rec['issue'][1:-1]),  # drop 第 and 号
+                extract_topics(meeting_rec['speechRecord'][0]['speech'])
+            )
             minutes_lst.append(minutes)
 
-            for current_speech in speeches:
-                speaker_name = current_speech['speaker']
-                order = current_speech['speechOrder']
-                speech_name = '{0}{1}'.format(minutes_name, int(order))
-                speech = build_speech(speech_name, speaker_name, order)
+            for speech_rec in meeting_rec['speechRecord']:
+                speech = build_speech(
+                    minutes.name,
+                    speech_rec['speaker'],
+                    int(speech_rec['speechOrder'])
+                )
                 speech.meta = {'minutes_id': minutes.id}
                 speech_lst.append(speech)
 
