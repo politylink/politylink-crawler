@@ -58,8 +58,15 @@ def to_neo4j_datetime(dt):
 
 def extract_topics(first_speech):
     def format_first_speech(speech):
-        start_idx = re.search(r'本日の会議に付した案件', speech).end()
-        speech = speech[start_idx:]
+        start_idx, end_idx = re.search(r'本日の会議に付した案件|本日の公聴会で意見を聞いた案件', speech).span()
+        if re.search('議事日程のとおり', speech[end_idx:]) is None:
+            # start_idxより後の文章に議題が記載されている場合
+            speech = speech[end_idx:]
+        else:
+            # start_idxより前の文章に議題が記載されている場合
+            speech = speech[:start_idx]
+
+        # 改行を削除
         if re.search(r'\r\n○', speech) is not None:
             speech = speech.replace('\r\n\u3000', '')
             speech = speech.replace('\r\n○', '\r\n\u3000')
@@ -69,16 +76,14 @@ def extract_topics(first_speech):
 
     topics = []
     first_speech = format_first_speech(first_speech)
-    topic_patterns = [re.compile(r'第(一|二|三|四|五|六|七|八|九|十)+\s\S+'),
-                      re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願)(\（.+\）)?')]
-    for pattern in topic_patterns:
-        for m in pattern.finditer(first_speech):
-            topic = m.group()
-            topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
-            # remove brackets and text
-            topic = re.sub(r'(\(|（)[^)]*(\)|）)?', '', topic)
-            topic = topic.strip()
-            if topic not in topics:
-                topics.append(topic)
+    topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
+    for m in topic_pattern.finditer(first_speech):
+        topic = m.group()
+        topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
+        # remove brackets and text
+        topic = re.sub(r'(\(|（)[^)]*(\)|）)?', '', topic)
+        topic = topic.strip()
+        if topic not in topics:
+            topics.append(topic)
 
     return topics
