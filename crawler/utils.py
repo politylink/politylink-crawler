@@ -6,7 +6,7 @@ from politylink.idgen import idgen
 
 
 def extract_text(cell):
-    return cell.xpath('.//text()').get().strip()
+    return cell.xpath('.//text()').get()
 
 
 def extract_full_href_or_none(cell, root_url):
