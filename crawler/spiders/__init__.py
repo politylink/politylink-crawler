@@ -21,6 +21,8 @@ class SpiderTemplate(scrapy.Spider):
 
     def store_urls(self, urls, bill_title):
         bills = self.bill_finder.find(bill_title)
+        if len(bills) == 0:
+            LOGGER.warning(f'failed to find Bill for {bill_title}')
         for url in urls:
             self.client.exec_merge_url(url)
             for bill in bills:
@@ -39,7 +41,7 @@ class TableSpiderTemplate(SpiderTemplate):
             cells = row.xpath('.//td')
             if len(cells) > max(self.bill_col, self.url_col):
                 try:
-                    bill_title = extract_text(cells[self.bill_col])
+                    bill_title = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
                     self.store_urls(urls, bill_title)
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_title}')
