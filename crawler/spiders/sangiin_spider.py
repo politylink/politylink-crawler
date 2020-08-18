@@ -69,25 +69,25 @@ class SangiinSpider(SpiderTemplate):
             extract_datetime_or_none(submission_data, '提出日')
         )
         sangiin_committee_data = self.parse_meisai_table(tables[2])
-        if sangiin_committee_data.get('議決・継続結果') == '可決':
+        if sangiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
             set_datetime_if_exists(
                 'passed_councilors_committee_date',
                 extract_datetime_or_none(sangiin_committee_data, '議決日')
             )
         sangiin_data = self.parse_meisai_table(tables[3])
-        if sangiin_data.get('議決') == '可決':
+        if sangiin_data.get('議決') in ['可決', '修正']:
             set_datetime_if_exists(
                 'passed_councilors_date',
                 extract_datetime_or_none(sangiin_data, '議決日')
             )
         shugiin_committee_data = self.parse_meisai_table(tables[4])
-        if shugiin_committee_data.get('議決・継続結果') == '可決':
+        if shugiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
             set_datetime_if_exists(
                 'passed_representatives_committee_date',
                 extract_datetime_or_none(shugiin_committee_data, '議決日')
             )
         shugiin_data = self.parse_meisai_table(tables[5])
-        if shugiin_data.get('議決') == '可決':
+        if shugiin_data.get('議決') in ['可決', '修正']:
             set_datetime_if_exists(
                 'passed_representatives_date',
                 extract_datetime_or_none(shugiin_data, '議決日')
