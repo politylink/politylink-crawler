@@ -1,11 +1,12 @@
 import json
+from datetime import datetime
 from logging import getLogger
 
 import scrapy
 
 from crawler.utils import build_minutes, build_speech, extract_topics
 from politylink.graphql.client import GraphQLClient
-from politylink.graphql.schema import Minutes, Speech
+from politylink.graphql.schema import Minutes
 from politylink.helpers import BillFinder
 
 LOGGER = getLogger(__name__)
@@ -51,12 +52,13 @@ class MinutesSpider(scrapy.Spider):
                     self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
 
-        for speech in speech_lst:
-            assert isinstance(speech, Speech)
-            self.client.exec_merge_speech(speech)
-            self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
-            LOGGER.debug(f'merged {speech.id}')
-        LOGGER.info(f'merged {len(speech_lst)} speeches')
+        # ToDo: enable speech collection after implementing batch GraphQL method
+        # for speech in speech_lst:
+        #     assert isinstance(speech, Speech)
+        #     self.client.exec_merge_speech(speech)
+        #     self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
+        #     LOGGER.debug(f'merged {speech.id}')
+        # LOGGER.info(f'merged {len(speech_lst)} speeches')
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
@@ -68,13 +70,19 @@ class MinutesSpider(scrapy.Spider):
         minutes_lst, speech_lst = [], []
 
         for meeting_rec in response_body['meetingRecord']:
-            minutes = build_minutes(
-                int(meeting_rec['session']),
-                meeting_rec['nameOfHouse'],
-                meeting_rec['nameOfMeeting'],
-                int(meeting_rec['issue'][1:-1]),  # drop 第 and 号
-                extract_topics(meeting_rec['speechRecord'][0]['speech'])
-            )
+            try:
+                minutes = build_minutes(
+                    int(meeting_rec['session']),
+                    meeting_rec['nameOfHouse'],
+                    meeting_rec['nameOfMeeting'],
+                    int(meeting_rec['issue'][1:-1]),  # ToDo: fix failure of adhoc removal of 第 and 号
+                    extract_topics(meeting_rec['speechRecord'][0]['speech']),
+                    meeting_rec['meetingURL'],
+                    datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
+                )
+            except ValueError as e:
+                LOGGER.warning(f'failed to parse minutes: {e}')
+                continue
             minutes_lst.append(minutes)
 
             for speech_rec in meeting_rec['speechRecord']:
