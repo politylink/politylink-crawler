@@ -4,22 +4,19 @@ from logging import getLogger
 
 import scrapy
 
+from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics
-from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes
-from politylink.helpers import BillFinder
 
 LOGGER = getLogger(__name__)
 
 
-class MinutesSpider(scrapy.Spider):
+class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'kokkai.ndl.go.jp'
 
     def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
-        self.client = GraphQLClient()
-        self.bill_finder = BillFinder()
         self.start_date = start_date
         self.end_date = end_date
         self.next_pos = 1

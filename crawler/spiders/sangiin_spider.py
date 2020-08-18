@@ -1,23 +1,17 @@
 from logging import getLogger
 
-import scrapy
-
+from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime
-from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Url, Bill
 from politylink.utils import DateConverter
 
 LOGGER = getLogger(__name__)
 
 
-class SangiinSpider(scrapy.Spider):
+class SangiinSpider(SpiderTemplate):
     name = 'sangiin'
     domain = 'sangiin.go.jp'
     start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/201/gian.htm']
-
-    def __init__(self, *args, **kwargs):
-        super(SangiinSpider, self).__init__(*args, **kwargs)
-        self.client = GraphQLClient()
 
     def parse(self, response):
         """

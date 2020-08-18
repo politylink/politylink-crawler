@@ -2,6 +2,7 @@ from logging import getLogger
 
 import scrapy
 
+from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Bill, Url
@@ -9,14 +10,10 @@ from politylink.graphql.schema import Bill, Url
 LOGGER = getLogger(__name__)
 
 
-class ShugiinSpider(scrapy.Spider):
+class ShugiinSpider(SpiderTemplate):
     name = 'shugiin'
     domain = 'shugiin.go.jp'
     start_urls = ['http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/menu.htm']
-
-    def __init__(self, *args, **kwargs):
-        super(ShugiinSpider, self).__init__(*args, **kwargs)
-        self.client = GraphQLClient()
 
     def parse(self, response):
         """
