@@ -1,8 +1,15 @@
 import re
+from enum import Enum
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput
 from politylink.idgen import idgen
+
+
+class UrlTitle(str, Enum):
+    GAIYOU = '概要'
+    GAIYOU_PDF = '概要PDF'
+    SINKYU_PDF = '新旧対照表PDF'
 
 
 def extract_text(cell):
@@ -27,7 +34,7 @@ def build_bill(bill_category, diet_number, submission_number, bill_name):
 def build_url(href, title, domain):
     url = Url(None)
     url.url = href
-    url.title = title
+    url.title = title.value if isinstance(title, UrlTitle) else title
     url.domain = domain
     url.id = idgen(url)
     return url
