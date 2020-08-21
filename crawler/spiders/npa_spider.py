@@ -1,25 +1,17 @@
-from crawler.spiders import SpiderTemplate
-from crawler.utils import build_url
+from crawler.spiders import ManualSpiderTemplate
+from crawler.utils import UrlTitle
 
 
-class NpaSpider(SpiderTemplate):
+class NpaSpider(ManualSpiderTemplate):
     name = 'npa'  # 警察庁
     domain = 'npa.go.jp'
     start_urls = ['https://www.npa.go.jp/laws/kokkai/index.html']
 
-    def parse(self, response):
-        self.store_urls(
-            [
-                build_url(
-                    href='https://www.npa.go.jp/laws/kokkai/200303/gaiyou.pdf',
-                    title='概要PDF',
-                    domain=self.domain
-                ),
-                build_url(
-                    href='https://www.npa.go.jp/laws/kokkai/200303/sinkyu.pdf',
-                    title='新旧対照表PDF',
-                    domain=self.domain
-                )
-            ],
-            '道路交通法の一部を改正する法律案'
-        )
+    items = [
+        {'title': UrlTitle.GAIYOU_PDF,
+         'bill_text': '道路交通法の一部を改正する法律案',
+         'href': 'https://www.npa.go.jp/laws/kokkai/200303/gaiyou.pdf'},
+        {'title': UrlTitle.SINKYU_PDF,
+         'bill_text': '道路交通法の一部を改正する法律案',
+         'href': 'https://www.npa.go.jp/laws/kokkai/200303/sinkyu.pdf'},
+    ]
