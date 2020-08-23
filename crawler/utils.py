@@ -67,15 +67,15 @@ def extract_topics(first_speech):
     def format_first_speech(first_speech):
         start_idx, end_idx = re.search(r'○?本日の会議に付した案件|○?本日の公聴会で意見を聞いた案件', first_speech).span()
         speech_lst = []
-        speech_lst.append(first_speech[end_idx:])  # start_idxより後の文章を取得
 
-        # start_idxより前にも議題が書いてある場合
-        if re.search('議事日程のとおり', first_speech[end_idx:]) is not None:
-            # start_idxより後の文章に議題が記載されている場合
-            # 議題が記載されている以前の文章を除くためのindex
-            topic_start_idx = re.search(r'議事日程', first_speech).end()
-            # start_idxより前の文章に議題が記載されている場合
-            speech_lst.append(first_speech[topic_start_idx:start_idx])
+        # 議事日程を取得
+        # 議題が記載されている以前の文章を除くためのindex
+        schedule_idx = re.search(r'議事日程', first_speech)
+        if schedule_idx is not None:
+            speech_lst.append(first_speech[schedule_idx.end():start_idx])
+
+        # 明示的に記載されて案件を取得
+        speech_lst.append(first_speech[end_idx:])  # start_idxより後の文章を取得
 
         # 改行を削除
         format_speech = ''
@@ -91,7 +91,7 @@ def extract_topics(first_speech):
 
     topics = []
     first_speech = format_first_speech(first_speech)
-    topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
+    topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|使用(総)?調書|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
     for m in topic_pattern.finditer(first_speech):
         topic = m.group()
         topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
