@@ -2,7 +2,7 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime
-from politylink.graphql.schema import Url, Bill
+from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
 LOGGER = getLogger(__name__)
@@ -59,6 +59,15 @@ class SangiinSpider(SpiderTemplate):
             if maybe_datetime:
                 setattr(bill, key, to_neo4j_datetime(maybe_datetime))
 
+        def extract_first_house_or_none(data, key):
+            if key in data:
+                val = data[key].strip()
+                if val == '衆先議':
+                    return House.REPRESENTATIVES
+                elif val == '本院先議':
+                    return House.COUNCILORS
+            return None
+
         tables = response.xpath('//table')
         bill = Bill(None)
         bill.id = response.meta['bill_id']
@@ -68,6 +77,11 @@ class SangiinSpider(SpiderTemplate):
             'submitted_date',
             extract_datetime_or_none(submission_data, '提出日')
         )
+
+        maybe_first_house = extract_first_house_or_none(submission_data, '先議区分')
+        if maybe_first_house:
+            bill.first_house = maybe_first_house
+
         sangiin_committee_data = self.parse_meisai_table(tables[2])
         if sangiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
             set_datetime_if_exists(
