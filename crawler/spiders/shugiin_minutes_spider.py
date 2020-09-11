@@ -55,8 +55,8 @@ class ShugiinMinutesSpider(SpiderTemplate):
         if len(minutes_list) != 1:
             LOGGER.warning(
                 f'found {len(minutes_list)} Minutes that match with ({committee_name}, {dt}): {minutes_list}')
-        for minutes in minutes_list:
-            self.client.exec_merge_url_referred_minutes(url.id, minutes_list[0].id)
+        for minutes in minutes_list:  # multiple Minutes can be found when 分科会
+            self.client.exec_merge_url_referred_minutes(url.id, minutes.id)
 
     @staticmethod
     def extract_datetime_from_title(title):
