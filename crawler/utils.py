@@ -10,6 +10,8 @@ class UrlTitle(str, Enum):
     GAIYOU = '概要'
     GAIYOU_PDF = '概要PDF'
     SINKYU_PDF = '新旧対照表PDF'
+    IINKAI_KEIKA = '委員会経過'
+    IINKAI_SITSUGI = '委員会質疑'
 
 
 def extract_text(cell):
