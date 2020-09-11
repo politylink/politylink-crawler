@@ -10,6 +10,7 @@ scrapy = "2.2.1"
 politylink = "^0.1.9"
 
 [tool.poetry.dev-dependencies]
+pytest = "^5.2"
 
 [build-system]
 requires = ["poetry>=0.12"]
