@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -102,14 +102,14 @@ class ShugiinSpider(SpiderTemplate):
             # build keika URL if exists
             maybe_keika_href = extract_full_href_or_none(cells[4], response_url)
             if maybe_keika_href:
-                url = build_url(maybe_keika_href, title='経過', domain=ShugiinSpider.domain)
+                url = build_url(maybe_keika_href, UrlTitle.KEIKA, ShugiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
             # build honbun URL if exists
             maybe_honbun_href = extract_full_href_or_none(cells[5], response_url)
             if maybe_honbun_href:
-                url = build_url(maybe_honbun_href, title='本文', domain=ShugiinSpider.domain)
+                url = build_url(maybe_honbun_href, UrlTitle.HONBUN, ShugiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
