@@ -5,15 +5,15 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_minutes, build_speech, extract_topics
-from politylink.graphql.schema import Minutes
+from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle
+from politylink.graphql.schema import Minutes, Url
 
 LOGGER = getLogger(__name__)
 
 
 class MinutesSpider(SpiderTemplate):
     name = 'minutes'
-    domain = 'kokkai.ndl.go.jp'
+    domain = 'ndl.go.jp'
 
     def __init__(self, start_date, end_date, *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
@@ -26,17 +26,16 @@ class MinutesSpider(SpiderTemplate):
             self.start_date, self.end_date, self.next_pos)
 
     def start_requests(self):
-        url = self.build_next_url()
-        yield scrapy.Request(url, self.parse)
+        yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
         """
-        Minutes, SpeechをGraphQLに保存する
+        Minutes, URL, SpeechをGraphQLに保存する
         """
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, speech_lst = self.scrape_minutes_and_speeches(response_body)
+        minutes_lst, url_lst, speech_lst = self.scrape_minutes_and_speeches(response_body)
 
         for minutes in minutes_lst:
             assert isinstance(minutes, Minutes)
@@ -49,7 +48,14 @@ class MinutesSpider(SpiderTemplate):
                     self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
 
-        # ToDo: enable speech collection after implementing batch GraphQL method
+        for url in url_lst:
+            assert isinstance(url, Url)
+            self.client.exec_merge_url(url)
+            self.client.exec_merge_url_referred_minutes(url.id, url.meta['minutes_id'])
+            LOGGER.debug(f'merged {url.id}')
+        LOGGER.info(f'merged {len(url_lst)} urls')
+
+        # ToDo: enable speech collection after implementing batch GraphQL method (POL-36)
         # for speech in speech_lst:
         #     assert isinstance(speech, Speech)
         #     self.client.exec_merge_speech(speech)
@@ -59,12 +65,11 @@ class MinutesSpider(SpiderTemplate):
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
-            url = self.build_next_url()
-            yield response.follow(url, callback=self.parse)
+            yield response.follow(self.build_next_url(), callback=self.parse)
 
     @staticmethod
     def scrape_minutes_and_speeches(response_body):
-        minutes_lst, speech_lst = [], []
+        minutes_lst, url_lst, speech_lst = [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -82,6 +87,10 @@ class MinutesSpider(SpiderTemplate):
                 continue
             minutes_lst.append(minutes)
 
+            url = build_url(meeting_rec['meetingURL'], UrlTitle.HONBUN, MinutesSpider.domain)
+            url.meta = {'minutes_id': minutes.id}
+            url_lst.append(url)
+
             for speech_rec in meeting_rec['speechRecord']:
                 speech = build_speech(
                     minutes.name,
@@ -91,4 +100,4 @@ class MinutesSpider(SpiderTemplate):
                 speech.meta = {'minutes_id': minutes.id}
                 speech_lst.append(speech)
 
-        return minutes_lst, speech_lst
+        return minutes_lst, url_lst, speech_lst

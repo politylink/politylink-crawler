@@ -8,6 +8,9 @@ from politylink.idgen import idgen
 
 class UrlTitle(str, Enum):
     GAIYOU = '概要'
+    KEIKA = '経過'
+    HONBUN = '本文'
+    GIAN_ZYOUHOU = '議案情報'
     GAIYOU_PDF = '概要PDF'
     SINKYU_PDF = '新旧対照表PDF'
     IINKAI_KEIKA = '委員会経過'
@@ -46,7 +49,7 @@ def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics,
     minutes = Minutes(None)
     minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
     minutes.topics = topics
-    minutes.url = url
+    minutes.url = url  # ToDo: remove once frontend migrated to Minutes.urls
     minutes.start_date_time = to_neo4j_datetime(date_time)
     minutes.id = idgen(minutes)
     return minutes

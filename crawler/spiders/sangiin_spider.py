@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -146,7 +146,7 @@ class SangiinSpider(SpiderTemplate):
             # build  URL if exists
             maybe_meisai_href = extract_full_href_or_none(cells[2], response_url)
             if maybe_meisai_href:
-                url = build_url(maybe_meisai_href, title='議案情報', domain=SangiinSpider.domain)
+                url = build_url(maybe_meisai_href, UrlTitle.GIAN_ZYOUHOU, SangiinSpider.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
