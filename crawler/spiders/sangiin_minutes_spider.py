@@ -19,12 +19,12 @@ class SangiinMinutesSpider(SpiderTemplate):
         for a in response.xpath('//a'):
             text = a.xpath('./text()').get()
             href = a.xpath('./@href').get()
-            if text == '委員会経過':
+            if text and '経過' in text:
                 keika_urls.append(href)
             elif text == '質疑項目':
                 sitsugi_urls.append(href)
         LOGGER.info(f'scraped {len(keika_urls)} keika urls')
-        LOGGER.info(f'scraped {len(keika_urls)} sitsugi urls')
+        LOGGER.info(f'scraped {len(sitsugi_urls)} sitsugi urls')
 
         for url in keika_urls:
             yield response.follow(url, callback=self.parse_keika)
@@ -46,6 +46,9 @@ class SangiinMinutesSpider(SpiderTemplate):
         for h4, pre in zip(h4_list, pre_list):
             dt = DateConverter.convert(extract_text(h4))
             summary = ''.join(extract_text(pre).strip().split())
+            if '誤りにつき訂正' in summary:
+                LOGGER.warning(f'skip non summary: {summary}')
+                continue
             minutes_list = self.minutes_finder.find(committee_name, dt)
             if len(minutes_list) != 1:
                 LOGGER.warning(
