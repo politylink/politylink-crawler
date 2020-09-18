@@ -30,9 +30,8 @@ class ShugiinCommitteeSpider(SpiderTemplate):
             assert len(cells) == 3
             try:
                 committee_name = '衆議院' + extract_text(cells[0]).strip()
-                LOGGER.info(committee_name)
                 num_members = int(extract_text(cells[1]).replace('人', ''))
-                matters = ShugiinMinutesSpider.extract_matters(cells[2])
+                matters = ShugiinCommitteeSpider.extract_matters(cells[2])
             except Exception as e:
                 LOGGER.warning(f'failed to parse row:\n{row.get()}\n{e}')
                 continue

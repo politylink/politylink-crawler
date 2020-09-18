@@ -27,7 +27,6 @@ class SangiinCommitteeSpider(SpiderTemplate):
         LOGGER.debug(f'scraped {len(num_members_list)} num members: {num_members_list}')
         matters_list = SangiinCommitteeSpider.scrape_matters_list(div)
         LOGGER.debug(f'scraped {len(matters_list)} matters: {matters_list}')
-        LOGGER.debug(matters_list)
 
         assert len(name_list) == len(num_members_list) == len(matters_list)
         committees = []
@@ -40,7 +39,8 @@ class SangiinCommitteeSpider(SpiderTemplate):
     def scrape_name_list(div):
         ret = []
         for h4 in div.css('h4.ta_l').css('h4.mt20').css('h4.fl_l'):
-            ret.append(extract_text(h4))
+            name = '参議院' + extract_text(h4).strip()
+            ret.append(name)
         return ret
 
     @staticmethod

@@ -64,12 +64,14 @@ def build_speech(minutes_name, speaker_name, order):
     return speech
 
 
-def build_committee(committee_name, house, num_members, matters):
+def build_committee(committee_name, house, num_members=None, matters=None):
     committee = Committee(None)
     committee.name = committee_name
     committee.house = house
-    committee.num_members = num_members
-    committee.matters = matters
+    if num_members:
+        committee.num_members = num_members
+    if matters:
+        committee.matters = matters
     committee.id = idgen(committee)
     return committee
 
