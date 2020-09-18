@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from urllib.parse import urljoin
 
-from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput
+from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee
 from politylink.idgen import idgen
 
 
@@ -62,6 +62,16 @@ def build_speech(minutes_name, speaker_name, order):
     speech.orderInMinutes = order
     speech.id = idgen(speech)
     return speech
+
+
+def build_committee(committee_name, house, num_members, matters):
+    committee = Committee(None)
+    committee.name = committee_name
+    committee.house = house
+    committee.num_members = num_members
+    committee.matters = matters
+    committee.id = idgen(committee)
+    return committee
 
 
 def to_neo4j_datetime(dt):
