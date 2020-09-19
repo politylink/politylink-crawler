@@ -46,6 +46,13 @@ class MinutesSpider(SpiderTemplate):
                 LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
                 for bill in bills:
                     self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
+            committees_list = self.committee_finder.find(minutes.name)
+            if len(committees_list) == 1:
+                committee = committees_list[0]
+                self.client.exec_merge_minutes_belonged_to_committee(minutes.id, committee.id)
+            else:
+                LOGGER.warning(
+                    f'found {len(committees_list)} committees that match with {minutes.name}:{committees_list}')
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
 
         for url in url_lst:

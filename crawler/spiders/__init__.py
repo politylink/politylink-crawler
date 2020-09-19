@@ -5,7 +5,7 @@ import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle
 from politylink.graphql.client import GraphQLClient
-from politylink.helpers import BillFinder, MinutesFinder
+from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
 
 LOGGER = getLogger(__name__)
 
@@ -18,6 +18,7 @@ class SpiderTemplate(scrapy.Spider):
         self.client = GraphQLClient()
         self.bill_finder = BillFinder()
         self.minutes_finder = MinutesFinder()
+        self.committee_finder = CommitteeFinder()
 
     def parse(self, response):
         NotImplemented
