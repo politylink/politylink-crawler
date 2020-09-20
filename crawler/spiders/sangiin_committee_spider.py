@@ -25,13 +25,13 @@ class SangiinCommitteeSpider(SpiderTemplate):
         LOGGER.debug(f'scraped {len(name_list)} names: {name_list}')
         num_members_list = SangiinCommitteeSpider.scrape_num_members_list(div)
         LOGGER.debug(f'scraped {len(num_members_list)} num members: {num_members_list}')
-        matters_list = SangiinCommitteeSpider.scrape_matters_list(div)
-        LOGGER.debug(f'scraped {len(matters_list)} matters: {matters_list}')
+        topics_list = SangiinCommitteeSpider.scrape_topics_list(div)
+        LOGGER.debug(f'scraped {len(topics_list)} topics: {topics_list}')
 
-        assert len(name_list) == len(num_members_list) == len(matters_list)
+        assert len(name_list) == len(num_members_list) == len(topics_list)
         committees = []
-        for name, num_members, matters in zip(name_list, num_members_list, matters_list):
-            committee = build_committee(name, "COUNCILORS", num_members, matters)
+        for name, num_members, topics in zip(name_list, num_members_list, topics_list):
+            committee = build_committee(name, "COUNCILORS", num_members, topics)
             committees.append(committee)
         return committees
 
@@ -55,11 +55,14 @@ class SangiinCommitteeSpider(SpiderTemplate):
         return ret
 
     @staticmethod
-    def scrape_matters_list(div):
+    def scrape_topics_list(div):
         ret = []
         for oul in div.css('ol, ul'):
             matters = []
             for li in oul.css('li'):
-                matters.append(extract_text(li).strip())
+                topic = extract_text(li).strip()
+                if topic.endswith('ため'):
+                    topic = topic[:-2]
+                matters.append(topic)
             ret.append(matters)
         return ret

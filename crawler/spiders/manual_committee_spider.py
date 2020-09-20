@@ -32,11 +32,11 @@ class ManualCommitteeSpider(SpiderTemplate):
 
     def parse(self, response):
         committees = [
-            build_committee('衆議院本会議', 'REPRESENTATIVES', 465, [main_desc]),
-            build_committee('参議院本会議', 'COUNCILORS', 248, [main_desc]),
-            build_committee('衆議院憲法審査会', 'REPRESENTATIVES', None, [kenpou_desc]),
-            build_committee('衆議院情報監視審査会', 'REPRESENTATIVES', None, [jouhou_desc]),
-            build_committee('衆議院政治倫理審査会', 'REPRESENTATIVES', None, [seiji_desc]),
+            build_committee('衆議院本会議', 'REPRESENTATIVES', 465, description=main_desc),
+            build_committee('参議院本会議', 'COUNCILORS', 248, description=main_desc),
+            build_committee('衆議院憲法審査会', 'REPRESENTATIVES', None, description=kenpou_desc),
+            build_committee('衆議院情報監視審査会', 'REPRESENTATIVES', None, description=jouhou_desc),
+            build_committee('衆議院政治倫理審査会', 'REPRESENTATIVES', None, description=seiji_desc),
         ]
         for committee in committees:
             self.client.exec_merge_committee(committee)
