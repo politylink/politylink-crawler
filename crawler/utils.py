@@ -53,11 +53,10 @@ def build_url(href, title, domain):
     return url
 
 
-def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, url, date_time):
+def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, date_time):
     minutes = Minutes(None)
     minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
     minutes.topics = topics
-    minutes.url = url  # ToDo: remove once frontend migrated to Minutes.urls
     minutes.start_date_time = to_neo4j_datetime(date_time)
     minutes.id = idgen(minutes)
     return minutes

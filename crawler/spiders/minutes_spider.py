@@ -86,7 +86,6 @@ class MinutesSpider(SpiderTemplate):
                     meeting_rec['nameOfMeeting'],
                     int(meeting_rec['issue'][1:-1]),  # ToDo: fix failure of adhoc removal of 第 and 号
                     extract_topics(meeting_rec['speechRecord'][0]['speech']),
-                    meeting_rec['meetingURL'],
                     datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
                 )
             except ValueError as e:
