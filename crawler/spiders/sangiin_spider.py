@@ -113,6 +113,8 @@ class SangiinSpider(SpiderTemplate):
             extract_datetime_or_none(proclaim_data, '公布年月日')
         )
 
+        bill.is_passed = hasattr(bill, 'proclaimed_date') or \
+                         (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
         self.client.exec_merge_bill(bill)
         LOGGER.debug(f'merged date for {bill.id}')
 
