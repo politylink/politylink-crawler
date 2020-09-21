@@ -17,6 +17,12 @@ class UrlTitle(str, Enum):
     IINKAI_SITSUGI = '質疑項目'
 
 
+class BillCategory(str, Enum):
+    KAKUHOU = '閣法'
+    SHUHOU = '衆法'
+    SANHOU = '参法'
+
+
 def extract_text(cell):
     return cell.xpath('.//text()').get()
 
@@ -30,8 +36,10 @@ def extract_full_href_or_none(cell, root_url):
 
 def build_bill(bill_category, diet_number, submission_number, bill_name):
     bill = Bill(None)
+    assert isinstance(bill_category, BillCategory)
+    bill.category = bill_category.name
     bill.name = bill_name
-    bill.bill_number = f'第{diet_number}回国会{bill_category}第{submission_number}号'
+    bill.bill_number = f'第{diet_number}回国会{bill_category.value}第{submission_number}号'
     bill.id = idgen(bill)
     return bill
 

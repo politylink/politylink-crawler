@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -75,15 +75,32 @@ class ShugiinSpider(SpiderTemplate):
     def scrape_bills_and_urls(response):
         bills, urls = [], []
         tables = response.xpath('//table')
-        for table, category in zip(tables[:3], ('衆法', '参法', '閣法')):
-            res = ShugiinSpider.scrape_bills_and_urls_from_table(table, category, response.url)
+        for table in tables[:3]:
+            res = ShugiinSpider.scrape_bills_and_urls_from_table(table, response.url)
             bills.extend(res[0])
             urls.extend(res[1])
         return bills, urls
 
     @staticmethod
-    def scrape_bills_and_urls_from_table(table, bill_category, response_url):
+    def scrape_bills_and_urls_from_table(table, response_url):
+        def scrape_bill_category_or_none(caption):
+            if caption == '閣法の一覧':
+                return BillCategory.KAKUHOU
+            elif caption == '衆法の一覧':
+                return BillCategory.SHUHOU
+            elif caption == '参法の一覧':
+                return BillCategory.SANHOU
+            else:
+                return None
+
         bills, urls = [], []
+
+        caption = extract_text(table.xpath('./caption')).strip()
+        maybe_bill_category = scrape_bill_category_or_none(caption)
+        if not maybe_bill_category:
+            return bills, urls
+        bill_category = maybe_bill_category
+
         for row in table.xpath('./tr')[1:]:  # skip header
             cells = row.xpath('./td')
             assert len(cells) == 6
