@@ -17,6 +17,12 @@ class UrlTitle(str, Enum):
     IINKAI_SITSUGI = '質疑項目'
 
 
+class BillCategory(str, Enum):
+    KAKUHOU = '閣法'
+    SHUHOU = '衆法'
+    SANHOU = '参法'
+
+
 def extract_text(cell):
     return cell.xpath('.//text()').get()
 
@@ -30,8 +36,10 @@ def extract_full_href_or_none(cell, root_url):
 
 def build_bill(bill_category, diet_number, submission_number, bill_name):
     bill = Bill(None)
+    assert isinstance(bill_category, BillCategory)
+    bill.category = bill_category.name
     bill.name = bill_name
-    bill.bill_number = f'第{diet_number}回国会{bill_category}第{submission_number}号'
+    bill.bill_number = f'第{diet_number}回国会{bill_category.value}第{submission_number}号'
     bill.id = idgen(bill)
     return bill
 
@@ -45,11 +53,10 @@ def build_url(href, title, domain):
     return url
 
 
-def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, url, date_time):
+def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, date_time):
     minutes = Minutes(None)
     minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
     minutes.topics = topics
-    minutes.url = url  # ToDo: remove once frontend migrated to Minutes.urls
     minutes.start_date_time = to_neo4j_datetime(date_time)
     minutes.id = idgen(minutes)
     return minutes
@@ -64,14 +71,16 @@ def build_speech(minutes_name, speaker_name, order):
     return speech
 
 
-def build_committee(committee_name, house, num_members=None, matters=None):
+def build_committee(committee_name, house, num_members=None, topics=None, description=None):
     committee = Committee(None)
     committee.name = committee_name
     committee.house = house
     if num_members:
         committee.num_members = num_members
-    if matters:
-        committee.matters = matters
+    if topics:
+        committee.topics = topics
+    if description:
+        committee.description = description
     committee.id = idgen(committee)
     return committee
 
@@ -122,3 +131,10 @@ def extract_topics(first_speech):
             topics.append(topic)
 
     return topics
+
+
+def clean_topic(topic):
+    topic = topic.strip()
+    if topic.endswith('ため'):
+        return topic[:-2]
+    return topic

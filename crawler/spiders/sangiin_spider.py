@@ -1,7 +1,8 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
+    BillCategory
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -112,17 +113,36 @@ class SangiinSpider(SpiderTemplate):
             extract_datetime_or_none(proclaim_data, '公布年月日')
         )
 
+        bill.is_passed = hasattr(bill, 'proclaimed_date') or \
+                         (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
         self.client.exec_merge_bill(bill)
         LOGGER.debug(f'merged date for {bill.id}')
 
     @staticmethod
     def scrape_bills_and_urls(response):
+        def get_bill_category_or_none(caption):
+            if caption == '法律案（内閣提出）一覧':
+                return BillCategory.KAKUHOU
+            elif caption == '法律案（衆法）一覧':
+                return BillCategory.SHUHOU
+            elif caption == '法律案（参法）一覧':
+                return BillCategory.SANHOU
+            else:
+                return None
+
         bills, urls = [], []
-        tables = response.xpath('//table')
-        for table, category in zip(tables[1:4], ('閣法', '衆法', '参法')):
-            res = SangiinSpider.scrape_bills_and_urls_from_table(table, category, response.url)
-            bills.extend(res[0])
-            urls.extend(res[1])
+
+        div = response.xpath('//div[@id="ContentsBox"]')[0]
+        tables = div.xpath('./table')
+        captions = list(map(lambda x: extract_text(x), div.css('h2.title_text')))
+        assert len(tables) == len(captions)
+
+        for table, caption in zip(tables, captions):
+            maybe_bill_category = get_bill_category_or_none(caption)
+            if maybe_bill_category:
+                res = SangiinSpider.scrape_bills_and_urls_from_table(table, maybe_bill_category, response.url)
+                bills.extend(res[0])
+                urls.extend(res[1])
         return bills, urls
 
     @staticmethod

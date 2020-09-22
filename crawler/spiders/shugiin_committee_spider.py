@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, build_committee
+from crawler.utils import extract_text, build_committee, clean_topic
 
 LOGGER = getLogger(__name__)
 
@@ -31,19 +31,19 @@ class ShugiinCommitteeSpider(SpiderTemplate):
             try:
                 committee_name = '衆議院' + extract_text(cells[0]).strip()
                 num_members = int(extract_text(cells[1]).replace('人', ''))
-                matters = ShugiinCommitteeSpider.extract_matters(cells[2])
+                topics = ShugiinCommitteeSpider.extract_topics(cells[2])
             except Exception as e:
                 LOGGER.warning(f'failed to parse row:\n{row.get()}\n{e}')
                 continue
-            committee = build_committee(committee_name, 'REPRESENTATIVES', num_members, matters)
+            committee = build_committee(committee_name, 'REPRESENTATIVES', num_members, topics)
             committees.append(committee)
         return committees
 
     @staticmethod
-    def extract_matters(cell):
-        matters = []
+    def extract_topics(cell):
+        topics = []
         for li in cell.xpath('.//li'):
-            matters.append(extract_text(li).strip())
-        if len(matters) == 0:
-            matters.append(extract_text(cell).strip())
-        return matters
+            topics.append(clean_topic(extract_text(li)))
+        if len(topics) == 0:
+            topics.append(clean_topic(extract_text(cell)))
+        return topics
