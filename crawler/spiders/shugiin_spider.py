@@ -83,7 +83,7 @@ class ShugiinSpider(SpiderTemplate):
 
     @staticmethod
     def scrape_bills_and_urls_from_table(table, response_url):
-        def scrape_bill_category_or_none(caption):
+        def get_bill_category_or_none(caption):
             if caption == '閣法の一覧':
                 return BillCategory.KAKUHOU
             elif caption == '衆法の一覧':
@@ -96,7 +96,7 @@ class ShugiinSpider(SpiderTemplate):
         bills, urls = [], []
 
         caption = extract_text(table.xpath('./caption')).strip()
-        maybe_bill_category = scrape_bill_category_or_none(caption)
+        maybe_bill_category = get_bill_category_or_none(caption)
         if not maybe_bill_category:
             return bills, urls
         bill_category = maybe_bill_category
