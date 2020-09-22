@@ -28,7 +28,7 @@ seiji_desc = '政治倫理審査会は、政治倫理の確立のため、議員
 
 class ManualCommitteeSpider(SpiderTemplate):
     name = 'manual_committee'
-    start_urls = ['https://politylink.jp']
+    start_urls = ['https://google.com']
 
     def parse(self, response):
         committees = [
