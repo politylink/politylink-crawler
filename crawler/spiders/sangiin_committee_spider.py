@@ -2,7 +2,7 @@ import re
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, build_committee
+from crawler.utils import extract_text, build_committee, clean_topic
 
 LOGGER = getLogger(__name__)
 
@@ -58,11 +58,8 @@ class SangiinCommitteeSpider(SpiderTemplate):
     def scrape_topics_list(div):
         ret = []
         for oul in div.css('ol, ul'):
-            matters = []
+            topics = []
             for li in oul.css('li'):
-                topic = extract_text(li).strip()
-                if topic.endswith('ため'):
-                    topic = topic[:-2]
-                matters.append(topic)
-            ret.append(matters)
+                topics.append(clean_topic(extract_text(li)))
+            ret.append(topics)
         return ret

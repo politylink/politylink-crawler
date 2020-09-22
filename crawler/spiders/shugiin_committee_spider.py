@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, build_committee
+from crawler.utils import extract_text, build_committee, clean_topic
 
 LOGGER = getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ShugiinCommitteeSpider(SpiderTemplate):
     def extract_topics(cell):
         topics = []
         for li in cell.xpath('.//li'):
-            topics.append(extract_text(li).strip())
+            topics.append(clean_topic(extract_text(li)))
         if len(topics) == 0:
-            topics.append(extract_text(cell).strip())
+            topics.append(clean_topic(extract_text(cell)))
         return topics

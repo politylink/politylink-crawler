@@ -131,3 +131,10 @@ def extract_topics(first_speech):
             topics.append(topic)
 
     return topics
+
+
+def clean_topic(topic):
+    topic = topic.strip()
+    if topic.endswith('ため'):
+        return topic[:-2]
+    return topic
