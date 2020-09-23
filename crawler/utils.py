@@ -94,7 +94,8 @@ def build_committee(committee_name, house, num_members=None, topics=None, descri
 
 
 def to_neo4j_datetime(dt):
-    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day)
+    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day, hour=dt.hour, minute=dt.minute,
+                               second=dt.second)
 
 
 def extract_topics(first_speech):
