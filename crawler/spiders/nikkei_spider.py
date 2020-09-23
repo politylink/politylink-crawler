@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_news
+from crawler.utils import build_news, to_neo4j_datetime
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -47,9 +47,9 @@ class NikkeiSpider(SpiderTemplate):
         news.title = title
         news.is_paid = is_paid
         if maybe_published_at:
-            news.published_at = maybe_published_at
+            news.published_at = to_neo4j_datetime(maybe_published_at)
         if maybe_last_modified_at:
-            news.last_modified_at = maybe_last_modified_at
+            news.last_modified_at = to_neo4j_datetime(maybe_last_modified_at)
         self.client.exec_merge_news(news)
 
         news_text = NewsText({'id': news.id})
