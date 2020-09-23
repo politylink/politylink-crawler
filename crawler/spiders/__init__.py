@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle
+from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.graphql.client import GraphQLClient
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
 
@@ -16,6 +17,7 @@ class SpiderTemplate(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(SpiderTemplate, self).__init__(*args, **kwargs)
         self.client = GraphQLClient()
+        self.es_client = ElasticsearchClient()
         self.bill_finder = BillFinder()
         self.minutes_finder = MinutesFinder()
         self.committee_finder = CommitteeFinder()
