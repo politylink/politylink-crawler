@@ -1,11 +1,21 @@
+import re
+from datetime import datetime
+from logging import getLogger
 from urllib.parse import urljoin
 
 import scrapy
 
+from crawler.spiders import SpiderTemplate
+from crawler.utils import build_news, to_neo4j_datetime
+from politylink.elasticsearch.schema import NewsText
 
-class NikkeiSpider(scrapy.Spider):
+LOGGER = getLogger(__name__)
+
+
+class NikkeiSpider(SpiderTemplate):
     name = 'nikkei'
-    limit = 4000
+    domain = 'nikkei.com'
+    limit = 100
 
     def __init__(self, *args, **kwargs):
         super(NikkeiSpider, self).__init__(*args, **kwargs)
@@ -27,11 +37,35 @@ class NikkeiSpider(scrapy.Spider):
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):
-        yield {
-            'url': response.url,
-            'time': response.css('dd.cmnc-publish::text').get(),
-            'tag': response.css('dl.cmn-article_topics').xpath('.//a/text()').getall(),
-            'paid': 'この記事は会員限定です' in response.body.decode('UTF-8'),
-            'title': response.css('h1.cmn-article_title').xpath('.//span/text()').getall(),
-            'text': response.css('div.cmn-article_text').xpath('.//p/text()').getall()
-        }
+        datetime_str = response.css('dd.cmnc-publish::text').get()
+        maybe_published_at, maybe_last_modified_at = self.extract_datetime_pair(datetime_str)
+        is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
+        title = ' '.join(response.css('h1.cmn-article_title').xpath('.//span/text()').getall())
+        body = ''.join(response.css('div.cmn-article_text').xpath('.//p/text()').getall())
+
+        news = build_news(response.url, self.domain)
+        news.title = title
+        news.is_paid = is_paid
+        if maybe_published_at:
+            news.published_at = to_neo4j_datetime(maybe_published_at)
+        if maybe_last_modified_at:
+            news.last_modified_at = to_neo4j_datetime(maybe_last_modified_at)
+        self.client.exec_merge_news(news)
+
+        news_text = NewsText({'id': news.id})
+        news_text.title = title
+        news_text.body = body
+        self.es_client.index(news_text)
+
+    @staticmethod
+    def extract_datetime_pair(text):
+        def to_datetime(maybe_dt_str):
+            return datetime.strptime(maybe_dt_str.strip(), '%Y/%m/%d %H:%M') if maybe_dt_str else None
+
+        pattern = r'([0-9/: ]*)(\(([0-9/: ]*)更新\))?'
+        text = text.strip()
+        match = re.fullmatch(pattern, text)
+        if not match:
+            LOGGER.warning(f'failed to extract datetime from {text}')
+            return None, None
+        return to_datetime(match.group(1)), to_datetime(match.group(3))

@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from urllib.parse import urljoin
 
-from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee
+from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News
 from politylink.idgen import idgen
 
 
@@ -53,6 +53,14 @@ def build_url(href, title, domain):
     return url
 
 
+def build_news(href, domain):
+    news = News(None)
+    news.url = href
+    news.domain = domain
+    news.id = idgen(news)
+    return news
+
+
 def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, date_time):
     minutes = Minutes(None)
     minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
@@ -86,7 +94,8 @@ def build_committee(committee_name, house, num_members=None, topics=None, descri
 
 
 def to_neo4j_datetime(dt):
-    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day)
+    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day, hour=dt.hour, minute=dt.minute,
+                               second=dt.second)
 
 
 def extract_topics(first_speech):
