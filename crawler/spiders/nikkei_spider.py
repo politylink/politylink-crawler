@@ -62,8 +62,10 @@ class NikkeiSpider(SpiderTemplate):
         def to_datetime(maybe_dt_str):
             return datetime.strptime(maybe_dt_str.strip(), '%Y/%m/%d %H:%M') if maybe_dt_str else None
 
-        pattern = r'([0-9/: ]*)(\(([0-9/: ]*)更新\))?'
+        if not text:
+            return None, None
         text = text.strip()
+        pattern = r'([0-9/: ]*)(\(([0-9/: ]*)更新\))?'
         match = re.fullmatch(pattern, text)
         if not match:
             LOGGER.warning(f'failed to extract datetime from {text}')

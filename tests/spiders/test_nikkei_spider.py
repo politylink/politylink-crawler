@@ -5,7 +5,7 @@ from crawler.spiders.nikkei_spider import NikkeiSpider
 
 class TestNikkeiSpider:
     def test_extract_datetime_pair(self):
-        text = 'こんにちは'
+        text = None
         dt1, dt2 = NikkeiSpider.extract_datetime_pair(text)
         assert dt1 is None
         assert dt2 is None
