@@ -1,3 +1,4 @@
+import json
 import re
 from enum import Enum
 from urllib.parse import urljoin
@@ -32,6 +33,13 @@ def extract_full_href_or_none(cell, root_url):
     if len(selector) == 1:
         return urljoin(root_url, selector[0].get())
     return None
+
+
+def extract_json_ld_or_none(response):
+    maybe_text = response.xpath('//script[@type="application/ld+json"]//text()').get()
+    if not maybe_text:
+        return None
+    return json.loads(maybe_text)
 
 
 def build_bill(bill_category, diet_number, submission_number, bill_name):
@@ -94,8 +102,8 @@ def build_committee(committee_name, house, num_members=None, topics=None, descri
 
 
 def to_neo4j_datetime(dt):
-    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day, hour=dt.hour, minute=dt.minute,
-                               second=dt.second)
+    return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day,
+                               hour=dt.hour, minute=dt.minute, second=dt.second)
 
 
 def extract_topics(first_speech):
@@ -147,3 +155,7 @@ def clean_topic(topic):
     if topic.endswith('ため'):
         return topic[:-2]
     return topic
+
+
+def strip_join(str_list, sep=''):
+    return sep.join(map(lambda x: x.strip(), str_list))
