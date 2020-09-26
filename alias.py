@@ -16,15 +16,12 @@ def main(fp):
             continue
         bill = bills[0]
 
-        aliases = []
-        for i in range(1, 6):
-            val = row[f'alias{i}']
-            if val:
-                aliases.append(val)
-        if aliases:
-            bill.aliases = aliases
-            client.exec_merge_bill(bill)
-            print(f'set alias={bill.aliases} for {bill.bill_number}')
+        aliases = list(filter(lambda x: x, [row['alias1'], row['alias2'], row['alias3']]))
+        tags = list(filter(lambda x: x, [row['tag1'], row['tag2'], row['tag3']]))
+        bill.aliases = aliases
+        bill.tags = tags
+        client.exec_merge_bill(bill)
+        print(f'set alias={bill.aliases} tags={bill.tags} for {bill.bill_number}')
 
 
 if __name__ == '__main__':
