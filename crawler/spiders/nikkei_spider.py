@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join
+from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, extract_thumbnail_or_none
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -46,8 +46,9 @@ class NikkeiSpider(SpiderTemplate):
             news.is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
             if maybe_json_ld:
                 json_ld = maybe_json_ld
-                if 'image' in json_ld and 'url' in json_ld['image']:
-                    news.thumbnail = json_ld['image']['url']
+                maybe_thumbnail = extract_thumbnail_or_none(json_ld)
+                if maybe_thumbnail:
+                    news.thumbnail = maybe_thumbnail
                 news.published_at = self.to_datetime(json_ld['datePublished'])
                 news.last_modified_at = self.to_datetime(json_ld['dateModified'])
             self.client.exec_merge_news(news)

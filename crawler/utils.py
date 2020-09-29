@@ -30,8 +30,8 @@ def extract_text(cell):
 
 def extract_full_href_or_none(cell, root_url):
     selector = cell.xpath('.//a/@href')
-    if len(selector) == 1:
-        return urljoin(root_url, selector[0].get())
+    if len(selector) > 0:
+        return urljoin(root_url, selector.get())
     return None
 
 
@@ -40,6 +40,12 @@ def extract_json_ld_or_none(response):
     if not maybe_text:
         return None
     return json.loads(maybe_text)
+
+
+def extract_thumbnail_or_none(ld_json):
+    if 'image' not in ld_json or 'url' not in ld_json['image']:
+        return None
+    return ld_json['image']['url']
 
 
 def build_bill(bill_category, diet_number, submission_number, bill_name):
