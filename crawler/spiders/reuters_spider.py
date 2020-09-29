@@ -14,7 +14,7 @@ LOGGER = getLogger(__name__)
 class ReutersSpider(SpiderTemplate):
     name = 'reuters'
     publisher = 'ロイター'
-    limit = 1
+    limit = 3
 
     def __init__(self, *args, **kwargs):
         super(ReutersSpider, self).__init__(*args, **kwargs)
