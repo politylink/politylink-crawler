@@ -4,8 +4,8 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_full_href_or_none, extract_json_ld_or_none, build_news, extract_thumbnail_or_none, \
-    strip_join, to_neo4j_datetime
+from crawler.utils import extract_json_ld_or_none, build_news, extract_thumbnail_or_none, \
+    strip_join, to_neo4j_datetime, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -27,12 +27,9 @@ class ReutersSpider(SpiderTemplate):
         yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        news_url_list = []
-        for news in response.xpath('//section[@id="moreSectionNews"]//article'):
-            maybe_url = extract_full_href_or_none(news, response.url)
-            if maybe_url:
-                news_url_list.append(maybe_url)
-        LOGGER.info(f'scraped {len(news_url_list)} News urls from {response.url}')
+        news_url_list = extract_full_href_list(
+            response.xpath('//section[@id="moreSectionNews"]//article'), response.url)
+        LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             yield response.follow(news_url, callback=self.parse_news)
         self.next_page += 1

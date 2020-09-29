@@ -35,6 +35,15 @@ def extract_full_href_or_none(cell, root_url):
     return None
 
 
+def extract_full_href_list(selector, root_url):
+    urls = []
+    for element in selector:
+        maybe_url = extract_full_href_or_none(element, root_url)
+        if maybe_url:
+            urls.append(maybe_url)
+    return urls
+
+
 def extract_json_ld_or_none(response):
     maybe_text = response.xpath('//script[@type="application/ld+json"]//text()').get()
     if not maybe_text:

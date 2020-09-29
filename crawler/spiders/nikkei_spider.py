@@ -1,11 +1,11 @@
 from datetime import datetime
 from logging import getLogger
-from urllib.parse import urljoin
 
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, extract_thumbnail_or_none
+from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, extract_thumbnail_or_none, \
+    extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -27,10 +27,10 @@ class NikkeiSpider(SpiderTemplate):
         yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        divs = response.css('div.m-miM09')
-        for div in divs:
-            url = urljoin(response.url, div.xpath('.//a/@href').get())
-            yield response.follow(url, callback=self.parse_news)
+        news_url_list = extract_full_href_list(response.css('div.m-miM09'), response.url)
+        LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
+        for news_url in news_url_list:
+            yield response.follow(news_url, callback=self.parse_news)
         self.next_bn += 20
         if self.next_bn <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
