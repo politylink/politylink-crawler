@@ -39,7 +39,7 @@ class ReutersSpider(SpiderTemplate):
     def parse_news(self, response):
         try:
             maybe_json_ld = extract_json_ld_or_none(response)
-            title = response.xpath('//h1/text()').get()
+            title = response.xpath('//h1/text()').get().strip()
             body = strip_join(response.xpath('//div[@class="ArticleBodyWrapper"]/p/text()').getall())
 
             news = build_news(response.url, self.publisher)
