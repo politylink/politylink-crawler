@@ -4,7 +4,8 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_full_href_or_none, build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join
+from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, \
+    extract_thumbnail_or_none, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -12,8 +13,8 @@ LOGGER = getLogger(__name__)
 
 class MainichiSpider(SpiderTemplate):
     name = 'mainichi'
-    domain = 'mainichi.jp'
-    limit = 50
+    publisher = '毎日新聞'
+    limit = 3
 
     def __init__(self, *args, **kwargs):
         super(MainichiSpider, self).__init__(*args, **kwargs)
@@ -26,16 +27,12 @@ class MainichiSpider(SpiderTemplate):
         yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        news_list = response.xpath('//section[@class="newslist"]').css('ul.list-typeA')
-        url_list = []
-        for li in news_list.xpath('li'):
-            maybe_url = extract_full_href_or_none(li, response.url)
-            if maybe_url:
-                url_list.append(maybe_url)
-        LOGGER.info(f'scraped {len(url_list)} News urls from {response.url}')
-        for url in url_list:
-            if 'premier' not in url:  # ToDo: process premier article
-                yield response.follow(url, callback=self.parse_news)
+        news_url_list = extract_full_href_list(
+            response.xpath('//section[@class="newslist"]').css('ul.list-typeA').xpath('./li'), response.url)
+        LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
+        for news_url in news_url_list:
+            if 'premier' not in news_url:  # ToDo: process premier article
+                yield response.follow(news_url, callback=self.parse_news)
         self.next_page += 1
         if self.next_page <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
@@ -47,12 +44,16 @@ class MainichiSpider(SpiderTemplate):
             title = article.xpath('.//h1/text()').get().strip()
             body = strip_join(article.xpath('.//p[@class="txt"]/text()').getall())
 
-            news = build_news(response.url, self.domain)
+            news = build_news(response.url, self.publisher)
             news.title = title
             news.is_paid = 'この記事は有料記事です' in response.body.decode('UTF-8')
             if maybe_json_ld:
-                news.published_at = self.to_datetime(maybe_json_ld['datePublished'])
-                news.last_modified_at = self.to_datetime(maybe_json_ld['dateModified'])
+                json_ld = maybe_json_ld
+                maybe_thumbnail = extract_thumbnail_or_none(json_ld)
+                if maybe_thumbnail:
+                    news.thumbnail = maybe_thumbnail
+                news.published_at = self.to_datetime(json_ld['datePublished'])
+                news.last_modified_at = self.to_datetime(json_ld['dateModified'])
             self.client.exec_merge_news(news)
 
             news_text = NewsText({'id': news.id})

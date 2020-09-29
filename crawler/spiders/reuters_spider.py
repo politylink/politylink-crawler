@@ -4,46 +4,47 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, extract_thumbnail_or_none, \
-    extract_full_href_list
+from crawler.utils import extract_json_ld_or_none, build_news, extract_thumbnail_or_none, \
+    strip_join, to_neo4j_datetime, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
 
 
-class NikkeiSpider(SpiderTemplate):
-    name = 'nikkei'
-    publisher = '日経新聞'
-    limit = 100
+class ReutersSpider(SpiderTemplate):
+    name = 'reuters'
+    publisher = 'ロイター'
+    limit = 3
 
     def __init__(self, *args, **kwargs):
-        super(NikkeiSpider, self).__init__(*args, **kwargs)
-        self.next_bn = 1
+        super(ReutersSpider, self).__init__(*args, **kwargs)
+        self.next_page = 1
 
     def build_next_url(self):
-        return f'https://www.nikkei.com/politics/politics/?bn={self.next_bn}'
+        return f'https://jp.reuters.com/news/archive/politicsNews?view=page&page={self.next_page}&pageSize=10'
 
     def start_requests(self):
         yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        news_url_list = extract_full_href_list(response.css('div.m-miM09'), response.url)
+        news_url_list = extract_full_href_list(
+            response.xpath('//section[@id="moreSectionNews"]//article'), response.url)
         LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             yield response.follow(news_url, callback=self.parse_news)
-        self.next_bn += 20
-        if self.next_bn <= self.limit:
+        self.next_page += 1
+        if self.next_page <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):
         try:
             maybe_json_ld = extract_json_ld_or_none(response)
-            title = strip_join(response.css('h1.cmn-article_title').xpath('.//span/text()').getall(), sep=' ')
-            body = strip_join(response.css('div.cmn-article_text').xpath('.//p/text()').getall())
+            title = response.xpath('//h1/text()').get().strip()
+            body = strip_join(response.xpath('//div[@class="ArticleBodyWrapper"]/p/text()').getall())
 
             news = build_news(response.url, self.publisher)
             news.title = title
-            news.is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
+            news.is_paid = False
             if maybe_json_ld:
                 json_ld = maybe_json_ld
                 maybe_thumbnail = extract_thumbnail_or_none(json_ld)
@@ -62,4 +63,4 @@ class NikkeiSpider(SpiderTemplate):
 
     @staticmethod
     def to_datetime(dt_str):
-        return to_neo4j_datetime(datetime.strptime(dt_str, '%Y%m%dT%H%M%S%z'))
+        return to_neo4j_datetime(datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%SZ'))
