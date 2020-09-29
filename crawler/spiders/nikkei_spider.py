@@ -13,7 +13,7 @@ LOGGER = getLogger(__name__)
 
 class NikkeiSpider(SpiderTemplate):
     name = 'nikkei'
-    domain = 'nikkei.com'
+    publisher = '日経新聞'
     limit = 100
 
     def __init__(self, *args, **kwargs):
@@ -41,12 +41,15 @@ class NikkeiSpider(SpiderTemplate):
             title = strip_join(response.css('h1.cmn-article_title').xpath('.//span/text()').getall(), sep=' ')
             body = strip_join(response.css('div.cmn-article_text').xpath('.//p/text()').getall())
 
-            news = build_news(response.url, self.domain)
+            news = build_news(response.url, self.publisher)
             news.title = title
             news.is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
             if maybe_json_ld:
-                news.published_at = self.to_datetime(maybe_json_ld['datePublished'])
-                news.last_modified_at = self.to_datetime(maybe_json_ld['dateModified'])
+                json_ld = maybe_json_ld
+                if 'image' in json_ld and 'url' in json_ld['image']:
+                    news.thumbnail = json_ld['image']['url']
+                news.published_at = self.to_datetime(json_ld['datePublished'])
+                news.last_modified_at = self.to_datetime(json_ld['dateModified'])
             self.client.exec_merge_news(news)
 
             news_text = NewsText({'id': news.id})

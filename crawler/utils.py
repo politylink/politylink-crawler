@@ -61,10 +61,10 @@ def build_url(href, title, domain):
     return url
 
 
-def build_news(href, domain):
+def build_news(href, publisher):
     news = News(None)
     news.url = href
-    news.domain = domain
+    news.publisher = publisher
     news.id = idgen(news)
     return news
 

@@ -12,7 +12,7 @@ LOGGER = getLogger(__name__)
 
 class MainichiSpider(SpiderTemplate):
     name = 'mainichi'
-    domain = 'mainichi.jp'
+    publisher = '毎日新聞'
     limit = 50
 
     def __init__(self, *args, **kwargs):
@@ -47,12 +47,15 @@ class MainichiSpider(SpiderTemplate):
             title = article.xpath('.//h1/text()').get().strip()
             body = strip_join(article.xpath('.//p[@class="txt"]/text()').getall())
 
-            news = build_news(response.url, self.domain)
+            news = build_news(response.url, self.publisher)
             news.title = title
             news.is_paid = 'この記事は有料記事です' in response.body.decode('UTF-8')
             if maybe_json_ld:
-                news.published_at = self.to_datetime(maybe_json_ld['datePublished'])
-                news.last_modified_at = self.to_datetime(maybe_json_ld['dateModified'])
+                json_ld = maybe_json_ld
+                if 'image' in json_ld and 'url' in json_ld['image']:
+                    news.thumbnail = json_ld['image']['url']
+                news.published_at = self.to_datetime(json_ld['datePublished'])
+                news.last_modified_at = self.to_datetime(json_ld['dateModified'])
             self.client.exec_merge_news(news)
 
             news_text = NewsText({'id': news.id})
