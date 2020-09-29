@@ -14,10 +14,10 @@ LOGGER = getLogger(__name__)
 class NikkeiSpider(SpiderTemplate):
     name = 'nikkei'
     publisher = '日経新聞'
-    limit = 100
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, limit, *args, **kwargs):
         super(NikkeiSpider, self).__init__(*args, **kwargs)
+        self.limit = int(limit)
         self.next_bn = 1
 
     def build_next_url(self):

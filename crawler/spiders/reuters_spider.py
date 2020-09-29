@@ -14,10 +14,10 @@ LOGGER = getLogger(__name__)
 class ReutersSpider(SpiderTemplate):
     name = 'reuters'
     publisher = 'ロイター'
-    limit = 3
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, limit, *args, **kwargs):
         super(ReutersSpider, self).__init__(*args, **kwargs)
+        self.limit = int(limit)
         self.next_page = 1
 
     def build_next_url(self):
