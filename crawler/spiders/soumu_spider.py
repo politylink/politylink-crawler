@@ -13,17 +13,17 @@ class SoumuSpider(TableSpiderTemplate, ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第55号',
-         'href': 'https://www.soumu.go.jp/main_content/000685039.pdf'},
+         'bill': '第201回国会閣法第55号',
+         'url': 'https://www.soumu.go.jp/main_content/000685039.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第55号',
-         'href': 'https://www.soumu.go.jp/main_content/000685043.pdf'},
+         'bill': '第201回国会閣法第55号',
+         'url': 'https://www.soumu.go.jp/main_content/000685043.pdf'},
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第6号',
-         'href': 'https://www.soumu.go.jp/main_content/000667524.pdf'},
+         'bill': '第201回国会閣法第6号',
+         'url': 'https://www.soumu.go.jp/main_content/000667524.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第6号',
-         'href': 'https://www.soumu.go.jp/main_content/000667527.pdf'},
+         'bill': '第201回国会閣法第6号',
+         'url': 'https://www.soumu.go.jp/main_content/000667527.pdf'},
     ]
 
     def parse(self, response):

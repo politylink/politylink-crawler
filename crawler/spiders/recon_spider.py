@@ -9,9 +9,9 @@ class ReconstructionSpider(ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '復興庁設置法等の一部を改正する法律案',
-         'href': 'https://www.reconstruction.go.jp/topics/main-cat12/sub-cat12-1/200303gaiyou.pdf'},
+         'bill': '復興庁設置法等の一部を改正する法律案',
+         'url': 'https://www.reconstruction.go.jp/topics/main-cat12/sub-cat12-1/200303gaiyou.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '復興庁設置法等の一部を改正する法律案',
-         'href': 'https://www.reconstruction.go.jp/topics/main-cat12/sub-cat12-1/200303sinkyu.pdf'},
+         'bill': '復興庁設置法等の一部を改正する法律案',
+         'url': 'https://www.reconstruction.go.jp/topics/main-cat12/sub-cat12-1/200303sinkyu.pdf'},
     ]

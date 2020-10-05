@@ -38,6 +38,5 @@ class ManualCommitteeSpider(SpiderTemplate):
             build_committee('衆議院情報監視審査会', 'REPRESENTATIVES', None, description=jouhou_desc),
             build_committee('衆議院政治倫理審査会', 'REPRESENTATIVES', None, description=seiji_desc),
         ]
-        for committee in committees:
-            self.client.exec_merge_committee(committee)
+        self.gql_client.bulk_merge(committees)
         LOGGER.info(f'merged {len(committees)} committees')

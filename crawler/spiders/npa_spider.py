@@ -9,9 +9,9 @@ class NpaSpider(ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '道路交通法の一部を改正する法律案',
-         'href': 'https://www.npa.go.jp/laws/kokkai/200303/gaiyou.pdf'},
+         'bill': '道路交通法の一部を改正する法律案',
+         'url': 'https://www.npa.go.jp/laws/kokkai/200303/gaiyou.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '道路交通法の一部を改正する法律案',
-         'href': 'https://www.npa.go.jp/laws/kokkai/200303/sinkyu.pdf'},
+         'bill': '道路交通法の一部を改正する法律案',
+         'url': 'https://www.npa.go.jp/laws/kokkai/200303/sinkyu.pdf'},
     ]

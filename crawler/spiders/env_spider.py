@@ -9,12 +9,12 @@ class EnvSpider(ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU,
-         'bill_text': '大気汚染防止法の一部を改正する法律案',
-         'href': 'http://www.env.go.jp/press/107831.html'},
+         'bill': '大気汚染防止法の一部を改正する法律案',
+         'url': 'http://www.env.go.jp/press/107831.html'},
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '大気汚染防止法の一部を改正する法律案',
-         'href': 'http://www.env.go.jp/press/107831/113496.pdf'},
+         'bill': '大気汚染防止法の一部を改正する法律案',
+         'url': 'http://www.env.go.jp/press/107831/113496.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '大気汚染防止法の一部を改正する法律案',
-         'href': 'http://www.env.go.jp/press/107831/113499.pdf'},
+         'bill': '大気汚染防止法の一部を改正する法律案',
+         'url': 'http://www.env.go.jp/press/107831/113499.pdf'},
     ]

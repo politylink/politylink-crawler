@@ -16,7 +16,7 @@ class SpiderTemplate(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super(SpiderTemplate, self).__init__(*args, **kwargs)
-        self.client = GraphQLClient()
+        self.gql_client = GraphQLClient()
         self.es_client = ElasticsearchClient()
         self.bill_finder = BillFinder()
         self.minutes_finder = MinutesFinder()
@@ -25,17 +25,17 @@ class SpiderTemplate(scrapy.Spider):
     def parse(self, response):
         NotImplemented
 
-    def store_urls(self, urls, bill_text):
-        bills = self.bill_finder.find(bill_text)
+    def store_urls(self, urls, bill_query):
+        bills = self.bill_finder.find(bill_query)
         if len(bills) == 0:
-            LOGGER.warning(f'failed to find Bill for {bill_text}')
+            LOGGER.warning(f'failed to find Bill for {bill_query}')
         elif len(bills) == 1:
             bill = bills[0]
-            for url in urls:
-                self.client.exec_merge_url(url)
-                self.client.exec_merge_url_referred_bills(url.id, bill.id)
+            if urls:
+                self.gql_client.bulk_merge(urls)
+                self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
         else:
-            LOGGER.warning(f'found multiple Bills for {bill_text}')
+            LOGGER.warning(f'found multiple Bills for {bill_query}')
 
 
 class TableSpiderTemplate(SpiderTemplate):
@@ -52,10 +52,10 @@ class TableSpiderTemplate(SpiderTemplate):
             cells = row.xpath('.//td')
             if len(cells) > max(self.bill_col, self.url_col):
                 try:
-                    bill_text = extract_text(cells[self.bill_col]).strip()
+                    bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
-                    self.store_urls(urls, bill_text)
-                    LOGGER.info(f'scraped {len(urls)} urls for {bill_text}')
+                    self.store_urls(urls, bill_query)
+                    LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
                     continue
@@ -80,6 +80,7 @@ class ManualSpiderTemplate(SpiderTemplate):
 
     def parse_items(self):
         for item in self.items:
-            bill_text = item['bill_text']
-            urls = [build_url(item['href'], item['title'], self.domain)]
-            self.store_urls(urls, bill_text)
+            bill_query = item['bill']
+            urls = [build_url(item['url'], item['title'], self.domain)]
+            self.store_urls(urls, bill_query)
+        LOGGER.info(f'merged {len(self.items)} urls')

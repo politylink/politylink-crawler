@@ -9,9 +9,9 @@ class CaaSpider(ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '公益通報者保護法の一部を改正する法律案',
-         'href': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_01.pdf'},
+         'bill': '公益通報者保護法の一部を改正する法律案',
+         'url': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_01.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '公益通報者保護法の一部を改正する法律案',
-         'href': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_04.pdf'},
+         'bill': '公益通報者保護法の一部を改正する法律案',
+         'url': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_04.pdf'},
     ]

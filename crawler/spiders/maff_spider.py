@@ -13,11 +13,11 @@ class MaffSpider(TableSpiderTemplate, ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第25号',
-         'href': 'https://www.maff.go.jp/j/law/bill/201/attach/pdf/index-13.pdf'},
+         'bill': '第201回国会閣法第25号',
+         'url': 'https://www.maff.go.jp/j/law/bill/201/attach/pdf/index-13.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第25号',
-         'href': 'https://www.maff.go.jp/j/law/bill/201/attach/pdf/index-11.pdf'},
+         'bill': '第201回国会閣法第25号',
+         'url': 'https://www.maff.go.jp/j/law/bill/201/attach/pdf/index-11.pdf'},
     ]
 
     def parse(self, response):

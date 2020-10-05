@@ -17,17 +17,17 @@ class CaoSpider(TableSpiderTemplate, ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第5号',
-         'href': 'https://www.cao.go.jp/houan/doc/201_1gaiyou.pdf'},
+         'bill': '第201回国会閣法第5号',
+         'url': 'https://www.cao.go.jp/houan/doc/201_1gaiyou.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第5号',
-         'href': 'https://www.cao.go.jp/houan/doc/201_1shinkyu.pdf'},
+         'bill': '第201回国会閣法第5号',
+         'url': 'https://www.cao.go.jp/houan/doc/201_1shinkyu.pdf'},
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第57号',
-         'href': 'https://www.cao.go.jp/houan/pdf/201/201_4gaiyou.pdf'},
+         'bill': '第201回国会閣法第57号',
+         'url': 'https://www.cao.go.jp/houan/pdf/201/201_4gaiyou.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第57号',
-         'href': 'https://www.cao.go.jp/houan/pdf/201/201_4shinkyu.pdf'},
+         'bill': '第201回国会閣法第57号',
+         'url': 'https://www.cao.go.jp/houan/pdf/201/201_4shinkyu.pdf'},
     ]
 
     def parse(self, response):

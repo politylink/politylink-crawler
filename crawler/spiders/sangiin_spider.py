@@ -18,28 +18,22 @@ class SangiinSpider(SpiderTemplate):
         """
         議案一覧ページからBillとURLを取得し、GraphQLに保存する
         """
+
         bills, urls = self.scrape_bills_and_urls(response)
-        LOGGER.info(f'scraped {len(bills)} bills')
-        LOGGER.info(f'scraped {len(urls)} urls')
+        self.gql_client.bulk_merge(bills + urls)
+        LOGGER.info(f'merged {len(bills)} bills and {len(urls)} urls')
 
-        for bill in bills:
-            assert isinstance(bill, Bill)
-            self.client.exec_merge_bill(bill)
-            LOGGER.debug(f'merged {bill.id}')
-        LOGGER.info(f'merged {len(bills)} bills')
-
+        from_ids, to_ids = [], []
         for url in urls:
-            assert isinstance(url, Url)
-            self.client.exec_merge_url(url)
-            self.client.exec_merge_url_referred_bills(url.id, url.meta['bill_id'])
-            LOGGER.debug(f'merged {url.id}')
-        LOGGER.info(f'merged {len(urls)} urls')
+            from_ids.append(url.id)
+            to_ids.append(url.meta['bill_id'])
+        self.gql_client.bulk_link(from_ids, to_ids)
+        LOGGER.info(f'merged {len(urls)} relationships')
 
         for url in urls:
             assert isinstance(url, Url)
             if url.title == '議案情報':
                 yield response.follow(url.url, callback=self.parse_meisai, meta=url.meta)
-        LOGGER.info(f'finished successfully')
 
     def parse_meisai(self, response):
         """
@@ -115,8 +109,8 @@ class SangiinSpider(SpiderTemplate):
 
         bill.is_passed = hasattr(bill, 'proclaimed_date') or \
                          (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
-        self.client.exec_merge_bill(bill)
-        LOGGER.debug(f'merged date for {bill.id}')
+        self.gql_client.merge(bill)
+        LOGGER.info(f'merged date for {bill.id}')
 
     @staticmethod
     def scrape_bills_and_urls(response):
