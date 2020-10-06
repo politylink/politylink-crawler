@@ -40,6 +40,7 @@ class MinutesSpider(SpiderTemplate):
         self.gql_client.bulk_merge(minutes_lst + url_lst)
         LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(url_lst)} urls')
         if self.collect_speech:
+            self.gql_client.bulk_merge(speech_lst)
             LOGGER.info(f'merged {len(speech_lst)} speeches')
 
         from_ids, to_ids = [], []
