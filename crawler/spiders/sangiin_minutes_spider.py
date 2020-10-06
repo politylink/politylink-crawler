@@ -33,7 +33,7 @@ class SangiinMinutesSpider(SpiderTemplate):
 
     def parse_keika(self, response):
         url = build_url(response.url, title=UrlTitle.IINKAI_KEIKA, domain=self.domain)
-        self.client.exec_merge_url(url)
+        self.gql_client.merge(url)
 
         contents = response.xpath('//div[@id="ContentsBox"]')
         h2_text = contents.xpath('.//h2/text()').get()
@@ -55,8 +55,8 @@ class SangiinMinutesSpider(SpiderTemplate):
                     f'found {len(minutes_list)} Minutes that match with ({committee_name}, {dt}): {minutes_list}')
             for minutes in minutes_list:
                 minutes.summary = summary
-                self.client.exec_merge_minutes(minutes)
-                self.client.exec_merge_url_referred_minutes(url.id, minutes.id)
+                self.gql_client.merge(minutes)
+                self.gql_client.link(url.id, minutes.id)
 
     def parse_sitsugi(self, response):
         contents = response.xpath('//div[@id="list-style"]')
@@ -71,7 +71,7 @@ class SangiinMinutesSpider(SpiderTemplate):
             except Exception as e:
                 LOGGER.error(f'failed to build url from {a} in {response.url}')
                 return
-            self.client.exec_merge_url(url)
+            self.gql_client.merge(url)
 
             dt = DateConverter.convert(text)
             minutes_list = self.minutes_finder.find(committee_name, dt)
@@ -79,4 +79,4 @@ class SangiinMinutesSpider(SpiderTemplate):
                 LOGGER.warning(
                     f'found {len(minutes_list)} Minutes that match with ({committee_name}, {dt}): {minutes_list}')
             for minutes in minutes_list:
-                self.client.exec_merge_url_referred_minutes(url.id, minutes.id)
+                self.gql_client.link(url.id, minutes.id)

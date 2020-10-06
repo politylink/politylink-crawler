@@ -16,10 +16,7 @@ class ShugiinCommitteeSpider(SpiderTemplate):
     def parse(self, response):
         table = response.xpath('//table')[0]
         committees = self.scrape_committees_from_table(table)
-        LOGGER.info(f'scraped {len(committees)} committees')
-
-        for committee in committees:
-            self.client.exec_merge_committee(committee)
+        self.gql_client.bulk_merge(committees)
         LOGGER.info(f'merged {len(committees)} committees')
 
     @staticmethod

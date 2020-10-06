@@ -45,18 +45,17 @@ class ShugiinMinutesSpider(SpiderTemplate):
             LOGGER.warning(f'failed to find url in {response.url}')
             return
         url = build_url(maybe_href, title=UrlTitle.GAIYOU_PDF, domain=self.domain)
-        self.client.exec_merge_url(url)
+        self.gql_client.merge(url)
 
         # merge with Minutes if exists
         committee_name = response.meta['committee_name']
         title = extract_text(response.xpath('//title'))
         dt = self.extract_datetime_from_title(title)
         minutes_list = self.minutes_finder.find(committee_name, dt)
-        if len(minutes_list) != 1:
+        if len(minutes_list) != 1:  # multiple Minutes can be found when 分科会
             LOGGER.warning(
                 f'found {len(minutes_list)} Minutes that match with ({committee_name}, {dt}): {minutes_list}')
-        for minutes in minutes_list:  # multiple Minutes can be found when 分科会
-            self.client.exec_merge_url_referred_minutes(url.id, minutes.id)
+        self.gql_client.bulk_link([url.id] * len(minutes_list), map(lambda x: x.id, minutes_list))
 
     @staticmethod
     def extract_datetime_from_title(title):

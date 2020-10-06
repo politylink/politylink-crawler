@@ -9,15 +9,15 @@ class MojSpider(ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '裁判所職員定員法の一部を改正する法律案',
-         'href': 'http://www.moj.go.jp/content/001313627.pdf'},
+         'bill': '裁判所職員定員法の一部を改正する法律案',
+         'url': 'http://www.moj.go.jp/content/001313627.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '自動車の運転により人を死傷させる行為等の処罰に関する法律の一部を改正する法律案',
-         'href': 'http://www.moj.go.jp/content/001316234.pdf'},
+         'bill': '自動車の運転により人を死傷させる行為等の処罰に関する法律の一部を改正する法律案',
+         'url': 'http://www.moj.go.jp/content/001316234.pdf'},
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '外国弁護士による法律事務の取扱いに関する特別措置法の一部を改正する法律案',
-         'href': 'http://www.moj.go.jp/content/001308756.pdf'},
+         'bill': '外国弁護士による法律事務の取扱いに関する特別措置法の一部を改正する法律案',
+         'url': 'http://www.moj.go.jp/content/001308756.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '外国弁護士による法律事務の取扱いに関する特別措置法の一部を改正する法律案',
-         'href': 'http://www.moj.go.jp/content/001308064.pdf'},
+         'bill': '外国弁護士による法律事務の取扱いに関する特別措置法の一部を改正する法律案',
+         'url': 'http://www.moj.go.jp/content/001308064.pdf'},
     ]

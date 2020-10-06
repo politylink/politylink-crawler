@@ -54,7 +54,7 @@ class MainichiSpider(SpiderTemplate):
                     news.thumbnail = maybe_thumbnail
                 news.published_at = self.to_datetime(json_ld['datePublished'])
                 news.last_modified_at = self.to_datetime(json_ld['dateModified'])
-            self.client.exec_merge_news(news)
+            self.gql_client.merge(news)
 
             news_text = NewsText({'id': news.id})
             news_text.title = title

@@ -6,7 +6,6 @@ import scrapy
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle
-from politylink.graphql.schema import Minutes, Url
 
 LOGGER = getLogger(__name__)
 
@@ -15,10 +14,11 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, *args, **kwargs):
+    def __init__(self, start_date, end_date, speech='false', *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
         self.end_date = end_date
+        self.collect_speech = speech == 'true'
         self.next_pos = 1
 
     def build_next_url(self):
@@ -37,38 +37,37 @@ class MinutesSpider(SpiderTemplate):
         response_body = json.loads(response.body)
         minutes_lst, url_lst, speech_lst = self.scrape_minutes_and_speeches(response_body)
 
+        self.gql_client.bulk_merge(minutes_lst + url_lst)
+        LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(url_lst)} urls')
+        if self.collect_speech:
+            self.gql_client.bulk_merge(speech_lst)
+            LOGGER.info(f'merged {len(speech_lst)} speeches')
+
+        from_ids, to_ids = [], []
         for minutes in minutes_lst:
-            assert isinstance(minutes, Minutes)
-            self.client.exec_merge_minutes(minutes)
-            LOGGER.debug(f'merged {minutes.id}')
             for topic in minutes.topics:
                 bills = self.bill_finder.find(topic)
                 LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
                 for bill in bills:
-                    self.client.exec_merge_minutes_discussed_bills(minutes.id, bill.id)
+                    from_ids.append(minutes.id)
+                    to_ids.append(bill.id)
             committees_list = self.committee_finder.find(minutes.name)
             if len(committees_list) == 1:
                 committee = committees_list[0]
-                self.client.exec_merge_minutes_belonged_to_committee(minutes.id, committee.id)
+                from_ids.append(minutes.id)
+                to_ids.append(committee.id)
             else:
                 LOGGER.warning(
                     f'found {len(committees_list)} committees that match with {minutes.name}:{committees_list}')
-        LOGGER.info(f'merged {len(minutes_lst)} minutes')
-
         for url in url_lst:
-            assert isinstance(url, Url)
-            self.client.exec_merge_url(url)
-            self.client.exec_merge_url_referred_minutes(url.id, url.meta['minutes_id'])
-            LOGGER.debug(f'merged {url.id}')
-        LOGGER.info(f'merged {len(url_lst)} urls')
-
-        # ToDo: enable speech collection after implementing batch GraphQL method (POL-36)
-        # for speech in speech_lst:
-        #     assert isinstance(speech, Speech)
-        #     self.client.exec_merge_speech(speech)
-        #     self.client.exec_merge_speech_belonged_to_minutes(speech.id, speech.meta['minutes_id'])
-        #     LOGGER.debug(f'merged {speech.id}')
-        # LOGGER.info(f'merged {len(speech_lst)} speeches')
+            from_ids.append(url.id)
+            to_ids.append(url.meta['minutes_id'])
+        if self.collect_speech:
+            for speech in speech_lst:
+                from_ids.append(speech.id)
+                to_ids.append(speech.meta['minutes_id'])
+        self.gql_client.bulk_link(from_ids, to_ids)
+        LOGGER.info(f'merged {len(from_ids)} relationships')
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:

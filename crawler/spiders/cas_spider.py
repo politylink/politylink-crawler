@@ -13,11 +13,11 @@ class CasSpider(TableSpiderTemplate, ManualSpiderTemplate):
 
     items = [
         {'title': UrlTitle.GAIYOU_PDF,
-         'bill_text': '第201回国会閣法第52号',
-         'href': 'http://www.cas.go.jp/jp/houan/200313/siryou1.pdf'},
+         'bill': '第201回国会閣法第52号',
+         'url': 'http://www.cas.go.jp/jp/houan/200313/siryou1.pdf'},
         {'title': UrlTitle.SINKYU_PDF,
-         'bill_text': '第201回国会閣法第52号',
-         'href': 'http://www.cas.go.jp/jp/houan/200313/siryou4.pdf'},
+         'bill': '第201回国会閣法第52号',
+         'url': 'http://www.cas.go.jp/jp/houan/200313/siryou4.pdf'},
     ]
 
     def parse(self, response):
