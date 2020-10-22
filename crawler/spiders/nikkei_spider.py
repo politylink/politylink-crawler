@@ -18,9 +18,11 @@ class NikkeiSpider(SpiderTemplate):
     def __init__(self, limit, *args, **kwargs):
         super(NikkeiSpider, self).__init__(*args, **kwargs)
         self.limit = int(limit)
-        self.next_bn = 1
+        self.news_count = 0
+        self.next_bn = -20
 
     def build_next_url(self):
+        self.next_bn += 20
         return f'https://www.nikkei.com/politics/politics/?bn={self.next_bn}'
 
     def start_requests(self):
@@ -31,8 +33,8 @@ class NikkeiSpider(SpiderTemplate):
         LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             yield response.follow(news_url, callback=self.parse_news)
-        self.next_bn += 20
-        if self.next_bn <= self.limit:
+        self.news_count += len(news_url_list)
+        if self.news_count <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):

@@ -18,9 +18,11 @@ class MainichiSpider(SpiderTemplate):
     def __init__(self, limit, *args, **kwargs):
         super(MainichiSpider, self).__init__(*args, **kwargs)
         self.limit = int(limit)
-        self.next_page = 1
+        self.news_count = 0
+        self.next_page = 0
 
     def build_next_url(self):
+        self.next_page += 1
         return f'https://mainichi.jp/seiji/{self.next_page}'
 
     def start_requests(self):
@@ -33,8 +35,8 @@ class MainichiSpider(SpiderTemplate):
         for news_url in news_url_list:
             if 'premier' not in news_url:  # ToDo: process premier article
                 yield response.follow(news_url, callback=self.parse_news)
-        self.next_page += 1
-        if self.next_page <= self.limit:
+        self.news_count += len(news_url_list)
+        if self.news_count <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):
