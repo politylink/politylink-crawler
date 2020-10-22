@@ -9,4 +9,5 @@ class ReutersKyodoSpider(ReutersSpider):
         super(ReutersKyodoSpider, self).__init__(limit, *args, **kwargs)
 
     def build_next_url(self):
+        self.next_page += 1
         return f'https://jp.reuters.com/news/archive/kyodoPoliticsNews?view=page&page={self.next_page}&pageSize=10'

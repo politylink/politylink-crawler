@@ -1,4 +1,4 @@
-from logging import getLogger
+import logging
 from urllib.parse import urljoin
 
 import scrapy
@@ -8,7 +8,7 @@ from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.graphql.client import GraphQLClient
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
 
-LOGGER = getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class SpiderTemplate(scrapy.Spider):
@@ -16,6 +16,7 @@ class SpiderTemplate(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super(SpiderTemplate, self).__init__(*args, **kwargs)
+        logging.getLogger('elasticsearch').setLevel(logging.WARNING)
         self.gql_client = GraphQLClient()
         self.es_client = ElasticsearchClient()
         self.bill_finder = BillFinder()

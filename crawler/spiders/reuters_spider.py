@@ -18,9 +18,11 @@ class ReutersSpider(SpiderTemplate):
     def __init__(self, limit, *args, **kwargs):
         super(ReutersSpider, self).__init__(*args, **kwargs)
         self.limit = int(limit)
-        self.next_page = 1
+        self.news_count = 0
+        self.next_page = 0
 
     def build_next_url(self):
+        self.next_page += 1
         return f'https://jp.reuters.com/news/archive/politicsNews?view=page&page={self.next_page}&pageSize=10'
 
     def start_requests(self):
@@ -32,8 +34,8 @@ class ReutersSpider(SpiderTemplate):
         LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             yield response.follow(news_url, callback=self.parse_news)
-        self.next_page += 1
-        if self.next_page <= self.limit:
+        self.news_count += len(news_url_list)
+        if self.news_count <= self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):
