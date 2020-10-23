@@ -36,7 +36,7 @@ class MainichiSpider(SpiderTemplate):
             if 'premier' not in news_url:  # ToDo: process premier article
                 yield response.follow(news_url, callback=self.parse_news)
         self.news_count += len(news_url_list)
-        if self.news_count <= self.limit:
+        if self.news_count < self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
     def parse_news(self, response):
@@ -62,6 +62,8 @@ class MainichiSpider(SpiderTemplate):
             news_text.title = title
             news_text.body = body
             self.es_client.index(news_text)
+
+            LOGGER.info(f'saved {news.id}')
         except Exception:
             LOGGER.exception(f'failed to parse News from {response.url}')
 
