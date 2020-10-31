@@ -84,20 +84,18 @@ def build_news(href, publisher):
     return news
 
 
-def build_minutes(diet_number, house_name, meeting_name, meeting_number, topics, date_time):
+def build_minutes(house_name, meeting_name, date_time):
     minutes = Minutes(None)
-    minutes.name = f'第{diet_number}回{house_name}{meeting_name}第{meeting_number}号'
-    minutes.topics = topics
+    minutes.name = f'{house_name}{meeting_name}'
     minutes.start_date_time = to_neo4j_datetime(date_time)
     minutes.id = idgen(minutes)
     return minutes
 
 
-def build_speech(minutes_name, speaker_name, order):
+def build_speech(minutes_id, order_in_minutes):
     speech = Speech(None)
-    speech.name = f'{minutes_name}{order}'
-    speech.speakerName = speaker_name
-    speech.orderInMinutes = order
+    speech.minutes_id = minutes_id
+    speech.order_in_minutes = order_in_minutes
     speech.id = idgen(speech)
     return speech
 

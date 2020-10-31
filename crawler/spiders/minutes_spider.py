@@ -65,7 +65,7 @@ class MinutesSpider(SpiderTemplate):
         if self.collect_speech:
             for speech in speech_lst:
                 from_ids.append(speech.id)
-                to_ids.append(speech.meta['minutes_id'])
+                to_ids.append(speech.minutes_id)
         self.gql_client.bulk_link(from_ids, to_ids)
         LOGGER.info(f'merged {len(from_ids)} relationships')
 
@@ -80,13 +80,10 @@ class MinutesSpider(SpiderTemplate):
         for meeting_rec in response_body['meetingRecord']:
             try:
                 minutes = build_minutes(
-                    int(meeting_rec['session']),
                     meeting_rec['nameOfHouse'],
                     meeting_rec['nameOfMeeting'],
-                    int(meeting_rec['issue'][1:-1]),  # ToDo: fix failure of adhoc removal of 第 and 号
-                    extract_topics(meeting_rec['speechRecord'][0]['speech']),
-                    datetime.strptime(meeting_rec['date'], '%Y-%m-%d')
-                )
+                    datetime.strptime(meeting_rec['date'], '%Y-%m-%d'))
+                minutes.topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
             except ValueError as e:
                 LOGGER.warning(f'failed to parse minutes: {e}')
                 continue
@@ -98,11 +95,9 @@ class MinutesSpider(SpiderTemplate):
 
             for speech_rec in meeting_rec['speechRecord']:
                 speech = build_speech(
-                    minutes.name,
-                    speech_rec['speaker'],
-                    int(speech_rec['speechOrder'])
-                )
-                speech.meta = {'minutes_id': minutes.id}
+                    minutes.id,
+                    int(speech_rec['speechOrder']))
+                speech.speaker_name = speech_rec['speaker']
                 speech_lst.append(speech)
 
         return minutes_lst, url_lst, speech_lst
