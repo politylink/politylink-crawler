@@ -45,6 +45,12 @@ class MinutesSpider(SpiderTemplate):
 
         from_ids, to_ids = [], []
         for minutes in minutes_lst:
+            try:
+                committee = self.committee_finder.find_one(minutes.name)
+                from_ids.append(minutes.id)
+                to_ids.append(committee.id)
+            except ValueError as e:
+                LOGGER.warning(e)
             if hasattr(minutes, 'topics'):
                 for topic in minutes.topics:
                     bills = self.bill_finder.find(topic)
@@ -52,14 +58,6 @@ class MinutesSpider(SpiderTemplate):
                     for bill in bills:
                         from_ids.append(minutes.id)
                         to_ids.append(bill.id)
-            committees_list = self.committee_finder.find(minutes.name)
-            if len(committees_list) == 1:
-                committee = committees_list[0]
-                from_ids.append(minutes.id)
-                to_ids.append(committee.id)
-            else:
-                LOGGER.warning(
-                    f'found {len(committees_list)} committees that match with {minutes.name}:{committees_list}')
         for url in url_lst:
             from_ids.append(url.id)
             to_ids.append(url.meta['minutes_id'])

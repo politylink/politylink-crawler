@@ -6,6 +6,7 @@ import scrapy
 from crawler.utils import extract_text, build_url, UrlTitle
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.graphql.client import GraphQLClient
+from politylink.graphql.schema import Minutes
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
 
 LOGGER = logging.getLogger(__name__)
@@ -85,3 +86,44 @@ class ManualSpiderTemplate(SpiderTemplate):
             urls = [build_url(item['url'], item['title'], self.domain)]
             self.store_urls(urls, bill_query)
         LOGGER.info(f'merged {len(self.items)} urls')
+
+
+class TvSpiderTemplate(SpiderTemplate):
+    def __init__(self, next_id, failure_in_row_limit, *args, **kwargs):
+        super(TvSpiderTemplate, self).__init__(*args, **kwargs)
+        self.next_id = next_id
+        self.failure_in_row_limit = failure_in_row_limit
+        self.failure_in_row = 0
+
+    def build_next_url(self) -> str:
+        NotImplemented
+
+    def start_requests(self):
+        yield scrapy.Request(self.build_next_url(), self.parse)
+
+    def parse(self, response):
+        """
+        MinutesとURLをGraphQLに保存する
+        """
+
+        minutes = self.scrape_minutes(response)
+        if minutes:
+            url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
+            self.gql_client.bulk_merge([minutes, url])
+            self.gql_client.link(url.id, minutes.id)
+            LOGGER.info(f'merged {minutes.id} and {url.id}')
+            try:
+                committee = self.committee_finder.find_one(minutes.name)
+                self.gql_client.link(minutes.id, committee.id)
+            except ValueError as e:
+                LOGGER.warning(e)
+            self.failure_in_row = 0
+        else:
+            LOGGER.info(f'failed to parse minutes from {response.url}. skipping...')
+            self.failure_in_row += 1
+
+        if self.failure_in_row < self.failure_in_row_limit:
+            yield response.follow(self.build_next_url(), callback=self.parse)
+
+    def scrape_minutes(self, response) -> Minutes:
+        NotImplemented

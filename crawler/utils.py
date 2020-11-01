@@ -19,6 +19,7 @@ class UrlTitle(str, Enum):
     SINKYU_PDF = '新旧対照表PDF'
     IINKAI_KEIKA = '委員会経過'
     IINKAI_SITSUGI = '質疑項目'
+    SHINGI_TYUKEI = '審議中継'
 
 
 class BillCategory(str, Enum):
