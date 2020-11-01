@@ -45,12 +45,13 @@ class MinutesSpider(SpiderTemplate):
 
         from_ids, to_ids = [], []
         for minutes in minutes_lst:
-            for topic in minutes.topics:
-                bills = self.bill_finder.find(topic)
-                LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
-                for bill in bills:
-                    from_ids.append(minutes.id)
-                    to_ids.append(bill.id)
+            if hasattr(minutes, 'topics'):
+                for topic in minutes.topics:
+                    bills = self.bill_finder.find(topic)
+                    LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
+                    for bill in bills:
+                        from_ids.append(minutes.id)
+                        to_ids.append(bill.id)
             committees_list = self.committee_finder.find(minutes.name)
             if len(committees_list) == 1:
                 committee = committees_list[0]
@@ -83,7 +84,9 @@ class MinutesSpider(SpiderTemplate):
                     meeting_rec['nameOfHouse'],
                     meeting_rec['nameOfMeeting'],
                     datetime.strptime(meeting_rec['date'], '%Y-%m-%d'))
-                minutes.topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
+                topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
+                if topics:
+                    minutes.topics = topics
             except ValueError as e:
                 LOGGER.warning(f'failed to parse minutes: {e}')
                 continue

@@ -1,10 +1,13 @@
 import json
 import re
 from enum import Enum
+from logging import getLogger
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News
 from politylink.idgen import idgen
+
+LOGGER = getLogger(__name__)
 
 
 class UrlTitle(str, Enum):
@@ -146,20 +149,22 @@ def extract_topics(first_speech):
         return format_speech
 
     topics = []
-    first_speech = format_first_speech(first_speech)
-    topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|使用(総)?調書|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
-    for m in topic_pattern.finditer(first_speech):
-        topic = m.group()
-        topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
-        # remove brackets and text
-        topic = re.sub(r'(\(|（)[^)]*(\)|）)', '', topic)
-        # remove insufficient brackets and text
-        topic = re.sub(r'(\(|（)[^)]*', '', topic)
-        # remove start and end spaces
-        topic = topic.strip()
-        if topic not in topics:
-            topics.append(topic)
-
+    try:
+        first_speech = format_first_speech(first_speech)
+        topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|使用(総)?調書|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
+        for m in topic_pattern.finditer(first_speech):
+            topic = m.group()
+            topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
+            # remove brackets and text
+            topic = re.sub(r'(\(|（)[^)]*(\)|）)', '', topic)
+            # remove insufficient brackets and text
+            topic = re.sub(r'(\(|（)[^)]*', '', topic)
+            # remove start and end spaces
+            topic = topic.strip()
+            if topic not in topics:
+                topics.append(topic)
+    except Exception:
+        LOGGER.exception(f'failed to parse topics from {first_speech}')
     return topics
 
 
