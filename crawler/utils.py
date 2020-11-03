@@ -89,9 +89,9 @@ def build_news(href, publisher):
     return news
 
 
-def build_minutes(house_name, meeting_name, date_time):
+def build_minutes(committee_name, date_time):
     minutes = Minutes(None)
-    minutes.name = f'{house_name}{meeting_name}'
+    minutes.name = committee_name
     minutes.start_date_time = to_neo4j_datetime(date_time)
     minutes.id = idgen(minutes)
     return minutes

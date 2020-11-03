@@ -30,7 +30,7 @@ class ShugiinTvSpider(TvSpiderTemplate):
             if term == '会議名':
                 meeting_name = self.get_full_meeting_name(desc)
         if date_time and meeting_name:
-            minutes = build_minutes(self.house_name, meeting_name, date_time)
+            minutes = build_minutes(self.house_name + meeting_name, date_time)
             topics = []
             tables = response.xpath('//div[@id="library2"]/table')
             if tables:
