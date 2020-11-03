@@ -30,7 +30,7 @@ class SangiinTvSpider(TvSpiderTemplate):
             elif term == '会議名':
                 meeting_name = desc
         if date_time and meeting_name:
-            minutes = build_minutes(self.house_name, meeting_name, date_time)
+            minutes = build_minutes(self.house_name + meeting_name, date_time)
             summary = ''.join(map(lambda x: x.strip(), content.xpath('./span/text()').getall()))
             if summary:
                 minutes.summary = summary
