@@ -179,3 +179,11 @@ def clean_topic(topic):
 
 def strip_join(str_list, sep=''):
     return sep.join(map(lambda x: x.strip(), str_list))
+
+
+def delete_old_urls(gql_client, bill_id, url_title):
+    bill = gql_client.get(bill_id)
+    for url in bill.urls:
+        if url.title == url_title:
+            gql_client.delete(url.id)
+            LOGGER.info(f'deleted {url.id}')
