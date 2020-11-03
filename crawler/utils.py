@@ -20,6 +20,7 @@ class UrlTitle(str, Enum):
     IINKAI_KEIKA = '委員会経過'
     IINKAI_SITSUGI = '質疑項目'
     SHINGI_TYUKEI = '審議中継'
+    PUBLIC_COMMENT = 'パブリックコメント'
 
 
 class BillCategory(str, Enum):

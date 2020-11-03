@@ -55,12 +55,12 @@ class ShugiinSpider(SpiderTemplate):
         paragraphs = response.xpath('//div[@id="mainlayout"]/p')
         if not paragraphs:
             paragraphs = response.xpath('//div[@id="mainlayout"]/div[@class="WordSection1"]/p[position()>3]')
-        content = [''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs]
-
-        if '理　由' in content:
+        text = ''.join([''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs])
+        reason_tag = '理　由'
+        if reason_tag in text:
             bill = Bill(None)
             bill.id = response.meta['bill_id']
-            bill.reason = '\n'.join(content[content.index('理　由') + 1:])
+            bill.reason = text[text.find(reason_tag) + len(reason_tag):].strip()
             self.gql_client.merge(bill)
             LOGGER.info(f'merged reason for {bill.id}')
 

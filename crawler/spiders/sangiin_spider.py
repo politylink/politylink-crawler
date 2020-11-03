@@ -12,7 +12,7 @@ LOGGER = getLogger(__name__)
 class SangiinSpider(SpiderTemplate):
     name = 'sangiin'
     domain = 'sangiin.go.jp'
-    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/201/gian.htm']
+    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/203/gian.htm']
 
     def parse(self, response):
         """

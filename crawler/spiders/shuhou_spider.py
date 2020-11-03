@@ -5,7 +5,7 @@ from crawler.utils import UrlTitle
 class ShuhouSpider(TableSpiderTemplate, ManualSpiderTemplate):
     name = 'shuhou'  # 衆議院法制局
     domain = 'shugiin.go.jp'
-    start_urls = ['http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/housei/html/h-shuhou201.html']
+    start_urls = ['http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/housei/html/h-shuhou203.html']
 
     table_idx = 0
     bill_col = 1
