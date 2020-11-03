@@ -38,4 +38,10 @@ class MhlwSpider(ManualSpiderTemplate):
         {'title': UrlTitle.SINKYU_PDF,
          'bill': '新型コロナウイルス感染症等の影響に対応するための雇用保険法の臨時特例等に関する法律案',
          'url': 'https://www.mhlw.go.jp/content/000637678.pdf'},
+        {'title': UrlTitle.GAIYOU_PDF,
+         'bill': '予防接種法及び検疫法の一部を改正する法律案',
+         'url': 'https://www.mhlw.go.jp/content/000686922.pdf'},
+        {'title': UrlTitle.SINKYU_PDF,
+         'bill': '予防接種法及び検疫法の一部を改正する法律案',
+         'url': 'https://www.mhlw.go.jp/content/000686925.pdf'},
     ]

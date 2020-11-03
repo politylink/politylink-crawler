@@ -20,6 +20,7 @@ class UrlTitle(str, Enum):
     IINKAI_KEIKA = '委員会経過'
     IINKAI_SITSUGI = '質疑項目'
     SHINGI_TYUKEI = '審議中継'
+    PUBLIC_COMMENT = 'パブリックコメント'
 
 
 class BillCategory(str, Enum):
@@ -178,3 +179,11 @@ def clean_topic(topic):
 
 def strip_join(str_list, sep=''):
     return sep.join(map(lambda x: x.strip(), str_list))
+
+
+def delete_old_urls(gql_client, bill_id, url_title):
+    bill = gql_client.get(bill_id)
+    for url in bill.urls:
+        if url.title == url_title:
+            gql_client.delete(url.id)
+            LOGGER.info(f'deleted {url.id}')

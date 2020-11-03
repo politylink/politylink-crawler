@@ -2,7 +2,7 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
-    BillCategory
+    BillCategory, delete_old_urls
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -12,7 +12,7 @@ LOGGER = getLogger(__name__)
 class SangiinSpider(SpiderTemplate):
     name = 'sangiin'
     domain = 'sangiin.go.jp'
-    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/201/gian.htm']
+    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/203/gian.htm']
 
     def parse(self, response):
         """
@@ -20,19 +20,19 @@ class SangiinSpider(SpiderTemplate):
         """
 
         bills, urls = self.scrape_bills_and_urls(response)
-        self.gql_client.bulk_merge(bills + urls)
-        LOGGER.info(f'merged {len(bills)} bills and {len(urls)} urls')
+        self.gql_client.bulk_merge(bills)
+        LOGGER.info(f'merged {len(bills)} bills')
 
-        from_ids, to_ids = [], []
         for url in urls:
-            from_ids.append(url.id)
-            to_ids.append(url.meta['bill_id'])
-        self.gql_client.bulk_link(from_ids, to_ids)
-        LOGGER.info(f'merged {len(urls)} relationships')
+            bill_id = url.meta['bill_id']
+            delete_old_urls(self.gql_client, bill_id, url.title)
+            self.gql_client.merge(url)
+            self.gql_client.link(url.id, bill_id)
+        LOGGER.info(f'merged {len(urls)} urls')
 
         for url in urls:
             assert isinstance(url, Url)
-            if url.title == '議案情報':
+            if url.title == UrlTitle.GIAN_ZYOUHOU:
                 yield response.follow(url.url, callback=self.parse_meisai, meta=url.meta)
 
     def parse_meisai(self, response):

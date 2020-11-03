@@ -1,7 +1,8 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
+    delete_old_urls
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -18,19 +19,19 @@ class ShugiinSpider(SpiderTemplate):
         """
 
         bills, urls = self.scrape_bills_and_urls(response)
-        self.gql_client.bulk_merge(bills + urls)
-        LOGGER.info(f'merged {len(bills)} bills and {len(urls)} urls')
+        self.gql_client.bulk_merge(bills)
+        LOGGER.info(f'merged {len(bills)} bills')
 
-        from_ids, to_ids = [], []
         for url in urls:
-            from_ids.append(url.id)
-            to_ids.append(url.meta['bill_id'])
-        self.gql_client.bulk_link(from_ids, to_ids)
-        LOGGER.info(f'merged {len(from_ids)} relationships')
+            bill_id = url.meta['bill_id']
+            delete_old_urls(self.gql_client, bill_id, url.title)
+            self.gql_client.merge(url)
+            self.gql_client.link(url.id, bill_id)
+        LOGGER.info(f'merged {len(urls)} urls')
 
         for url in urls:
             assert isinstance(url, Url)
-            if url.title == '本文':
+            if url.title == UrlTitle.HONBUN:
                 yield response.follow(url.url, callback=self.parse_honbun, meta=url.meta)
 
     def parse_honbun(self, response):
@@ -55,12 +56,12 @@ class ShugiinSpider(SpiderTemplate):
         paragraphs = response.xpath('//div[@id="mainlayout"]/p')
         if not paragraphs:
             paragraphs = response.xpath('//div[@id="mainlayout"]/div[@class="WordSection1"]/p[position()>3]')
-        content = [''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs]
-
-        if '理　由' in content:
+        text = ''.join([''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs])
+        reason_tag = '理　由'
+        if reason_tag in text:
             bill = Bill(None)
             bill.id = response.meta['bill_id']
-            bill.reason = '\n'.join(content[content.index('理　由') + 1:])
+            bill.reason = text[text.find(reason_tag) + len(reason_tag):].strip()
             self.gql_client.merge(bill)
             LOGGER.info(f'merged reason for {bill.id}')
 
