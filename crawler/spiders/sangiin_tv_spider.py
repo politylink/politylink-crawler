@@ -21,6 +21,8 @@ class SangiinTvSpider(TvSpiderTemplate):
 
     def scrape_minutes(self, response):
         content = response.xpath('//div[@id="detail-contents-inner"]')
+        if not content:
+            content = response.xpath('//div[@id="detail-contents-inner2"]')
         date_time, meeting_name = None, None
         for dl in content.xpath('//dl'):
             term = dl.xpath('./dt/text()').get()
