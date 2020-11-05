@@ -36,5 +36,8 @@ class SangiinTvSpider(TvSpiderTemplate):
             summary = ''.join(map(lambda x: x.strip(), content.xpath('./span/text()').getall()))
             if summary:
                 minutes.summary = summary
+            topics = content.xpath('./ul/li/text()').getall()
+            if topics:
+                minutes.topics = topics
             return minutes
         return None
