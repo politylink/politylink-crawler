@@ -1,23 +1,82 @@
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from logging import getLogger
 
-from crawler.spiders import TvSpiderTemplate
-from crawler.utils import build_minutes
+import scrapy
+
+from crawler.spiders import SpiderTemplate
+from crawler.utils import build_minutes, build_url, UrlTitle
 
 LOGGER = getLogger(__name__)
 
 
-class ShugiinTvSpider(TvSpiderTemplate):
+class ShugiinTvSpider(SpiderTemplate):
     name = 'shugiin_tv'
     domain = 'shugiintv.go.jp'
     house_name = '衆議院'
 
-    def __init__(self, *args, **kwargs):
-        super(ShugiinTvSpider, self).__init__(50000, 20, *args, **kwargs)
+    def __init__(self, start_date, end_date, *args, **kwargs):
+        def to_date(date_str):
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
 
-    def build_next_url(self):
-        self.next_id += 1
-        return 'https://www.shugiintv.go.jp/jp/index.php?ex=VL&deli_id={}'.format(self.next_id)
+        super(ShugiinTvSpider, self).__init__(*args, **kwargs)
+        start_date = to_date(start_date)
+        end_date = to_date(end_date)
+        self.start_urls = ['https://www.shugiintv.go.jp/jp/index.php?ex=TD']
+        for i in range((end_date - start_date).days):
+            self.start_urls.append(self.build_start_url(start_date + timedelta(i)))
+
+    @staticmethod
+    def build_start_url(date):
+        return 'https://www.shugiintv.go.jp/jp/index.php?ex=VL&u_day={}'.format(date.strftime('%Y%m%d'))
+
+    @staticmethod
+    def build_minutes_url(deli_id):
+        return 'https://www.shugiintv.go.jp/jp/index.php?ex=VL&deli_id={}'.format(deli_id)
+
+    def parse(self, response):
+        deli_ids = []
+        h_pages = []
+        for a in response.xpath('//table//td/a'):
+            href = a.xpath('./@href').get()
+            text = a.xpath('./text()').get()
+            match = re.search('deli_id=([0-9]+)', href)
+            if match:
+                deli_ids.append(match.group(1))
+            if text == '次の結果':
+                match = re.search("h_page.value='([0-9]+)'", href)
+                if match:
+                    h_pages.append(match.group(1))
+        LOGGER.info(f'scraped {len(deli_ids)} deli_ids from {response.url}: {deli_ids}')
+        LOGGER.info(f'scraped {len(h_pages)} h_pages from {response.url}: {h_pages}')
+
+        for deli_id in deli_ids:
+            yield response.follow(
+                self.build_minutes_url(deli_id),
+                callback=self.parse_minutes
+            )
+        for h_page in h_pages:
+            yield scrapy.FormRequest.from_response(
+                response,
+                formdata={'h_page': h_page},
+                callback=self.parse
+            )
+
+    def parse_minutes(self, response):
+        maybe_minutes = self.scrape_minutes(response)
+        if not maybe_minutes:
+            LOGGER.warning(f'failed to parse minutes from {response.url}. skipping...')
+
+        minutes = maybe_minutes
+        url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
+        self.gql_client.bulk_merge([minutes, url])
+        self.gql_client.link(url.id, minutes.id)
+        LOGGER.info(f'merged {minutes.id} and {url.id}')
+        try:
+            committee = self.committee_finder.find_one(minutes.name)
+            self.gql_client.link(minutes.id, committee.id)
+        except ValueError as e:
+            LOGGER.warning(e)
 
     def scrape_minutes(self, response):
         date_time, meeting_name = None, None
@@ -45,6 +104,7 @@ class ShugiinTvSpider(TvSpiderTemplate):
 
     @staticmethod
     def get_full_meeting_name(meeting_name):
+        # copied from https://www.shugiintv.go.jp/jp/index.php?ex=IF
         full_name_map = {
             '倫理選挙特別委員会': '政治倫理の確立及び公職選挙法改正に関する特別委員会',
             '沖縄北方特別委員会': '沖縄及び北方問題に関する特別委員会',
