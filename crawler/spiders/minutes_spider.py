@@ -79,8 +79,7 @@ class MinutesSpider(SpiderTemplate):
         for meeting_rec in response_body['meetingRecord']:
             try:
                 minutes = build_minutes(
-                    meeting_rec['nameOfHouse'],
-                    meeting_rec['nameOfMeeting'],
+                    meeting_rec['nameOfHouse'] + meeting_rec['nameOfMeeting'],
                     datetime.strptime(meeting_rec['date'], '%Y-%m-%d'))
                 topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
                 if topics:
