@@ -22,7 +22,7 @@ class ShugiinTvSpider(SpiderTemplate):
         super(ShugiinTvSpider, self).__init__(*args, **kwargs)
         start_date = to_date(start_date)
         end_date = to_date(end_date)
-        self.start_urls = ['https://www.shugiintv.go.jp/jp/index.php?ex=TD']
+        self.start_urls = []
         for i in range((end_date - start_date).days):
             self.start_urls.append(self.build_start_url(start_date + timedelta(i)))
 
@@ -77,6 +77,7 @@ class ShugiinTvSpider(SpiderTemplate):
             self.gql_client.link(minutes.id, committee.id)
         except ValueError as e:
             LOGGER.warning(e)
+        self.link_bills_by_topics(minutes)
 
     def scrape_minutes(self, response):
         date_time, meeting_name = None, None
