@@ -39,6 +39,30 @@ class SpiderTemplate(scrapy.Spider):
         else:
             LOGGER.warning(f'found multiple Bills for {bill_query}')
 
+    def delete_old_urls(self, bill_id, url_title):
+        bill = self.gql_client.get(bill_id)
+        for url in bill.urls:
+            if url.title == url_title:
+                self.gql_client.delete(url.id)
+                LOGGER.info(f'deleted {url.id}')
+
+    def link_bills_by_topics(self, minutes: Minutes):
+        if not hasattr(minutes, 'topics'):
+            return
+
+        from_ids, to_ids = [], []
+        for topic in minutes.topics:
+            bills = self.bill_finder.find(topic)
+            if len(bills) == 1:
+                bill = bills[0]
+                from_ids.append(minutes.id)
+                to_ids.append(bill.id)
+                LOGGER.debug(f'linked {minutes.id} to {bill.id}')
+            elif len(bills) > 1:
+                LOGGER.warning(f'found multiple bills that match with "{topic}" in {minutes.id}: {bills}')
+        self.gql_client.bulk_link(from_ids, to_ids)
+        LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
+
 
 class TableSpiderTemplate(SpiderTemplate):
     table_idx = NotImplemented
@@ -117,6 +141,7 @@ class TvSpiderTemplate(SpiderTemplate):
                 self.gql_client.link(minutes.id, committee.id)
             except ValueError as e:
                 LOGGER.warning(e)
+            self.link_bills_by_topics(minutes)
             self.failure_in_row = 0
         else:
             LOGGER.info(f'failed to parse minutes from {response.url}. skipping...')

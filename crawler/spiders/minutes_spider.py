@@ -51,13 +51,7 @@ class MinutesSpider(SpiderTemplate):
                 to_ids.append(committee.id)
             except ValueError as e:
                 LOGGER.warning(e)
-            if hasattr(minutes, 'topics'):
-                for topic in minutes.topics:
-                    bills = self.bill_finder.find(topic)
-                    LOGGER.debug(f'found {len(bills)} bills for topic={topic}')
-                    for bill in bills:
-                        from_ids.append(minutes.id)
-                        to_ids.append(bill.id)
+            self.link_bills_by_topics(minutes)
         for url in url_lst:
             from_ids.append(url.id)
             to_ids.append(url.meta['minutes_id'])

@@ -1,8 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
-    delete_old_urls
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -24,7 +23,7 @@ class ShugiinSpider(SpiderTemplate):
 
         for url in urls:
             bill_id = url.meta['bill_id']
-            delete_old_urls(self.gql_client, bill_id, url.title)
+            self.delete_old_urls(bill_id, url.title)
             self.gql_client.merge(url)
             self.gql_client.link(url.id, bill_id)
         LOGGER.info(f'merged {len(urls)} urls')
