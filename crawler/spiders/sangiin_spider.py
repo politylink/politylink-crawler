@@ -3,8 +3,9 @@ from logging import getLogger
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
     BillCategory
-from politylink.graphql.schema import Url, Bill, House
+from politylink.graphql.schema import Url, Bill, House, Query, _CommitteeFilter
 from politylink.utils import DateConverter
+from sgqlc.operation import Operation
 
 LOGGER = getLogger(__name__)
 
@@ -63,6 +64,20 @@ class SangiinSpider(SpiderTemplate):
                     return House.COUNCILORS
             return None
 
+        def convert_committee_name_to_id(committee_name):
+            print(committee_name)
+            op = Operation(Query)
+            committee_filter = _CommitteeFilter(None)
+            committee_filter.name = committee_name
+            committees = op.committee(filter=committee_filter)
+            committees.id()
+            committee_id = self.gql_client.exec(op)['Committee']
+            print(committee_id)
+            if len(committee_id) != 0:
+                print(committee_id[0])
+                return committee_id[0]['id']
+            return None
+
         tables = response.xpath('//table')
         bill = Bill(None)
         bill.id = response.meta['bill_id']
@@ -111,6 +126,17 @@ class SangiinSpider(SpiderTemplate):
                          (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
         self.gql_client.merge(bill)
         LOGGER.info(f'merged date for {bill.id}')
+
+        maybe_sangiin_committee_id = convert_committee_name_to_id('参議院'+sangiin_committee_data['付託委員会等'])
+        if maybe_sangiin_committee_id:
+            self.gql_client.link(bill.id, maybe_sangiin_committee_id)
+            LOGGER.info(f'linked {bill.id} to {maybe_sangiin_committee_id}')
+
+        maybe_shugiin_committee_id = convert_committee_name_to_id('衆議院'+shugiin_committee_data['付託委員会等'])
+        if maybe_shugiin_committee_id:
+            self.gql_client.link(bill.id, maybe_shugiin_committee_id)
+            LOGGER.info(f'linked {bill.id} to {maybe_shugiin_committee_id}')
+
 
     @staticmethod
     def scrape_bills_and_urls(response):
