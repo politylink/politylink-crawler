@@ -65,16 +65,13 @@ class SangiinSpider(SpiderTemplate):
             return None
 
         def convert_committee_name_to_id(committee_name):
-            print(committee_name)
             op = Operation(Query)
             committee_filter = _CommitteeFilter(None)
             committee_filter.name = committee_name
             committees = op.committee(filter=committee_filter)
             committees.id()
             committee_id = self.gql_client.exec(op)['Committee']
-            print(committee_id)
             if len(committee_id) != 0:
-                print(committee_id[0])
                 return committee_id[0]['id']
             return None
 
