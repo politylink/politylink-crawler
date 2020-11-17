@@ -1,7 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, build_committee, to_neo4j_datetime, UrlTitle, \
     BillCategory
 from politylink.graphql.schema import Url, Bill, House, Query, _CommitteeFilter
 from politylink.utils import DateConverter
@@ -64,15 +64,15 @@ class SangiinSpider(SpiderTemplate):
                     return House.COUNCILORS
             return None
 
-        def convert_committee_name_to_id(committee_name):
-            op = Operation(Query)
-            committee_filter = _CommitteeFilter(None)
-            committee_filter.name = committee_name
-            committees = op.committee(filter=committee_filter)
-            committees.id()
-            committee_id = self.gql_client.exec(op)['Committee']
-            if len(committee_id) != 0:
-                return committee_id[0]['id']
+        def extract_committee_id_or_none(data, key, house):
+            if key in data:
+                committee_name = data[key].strip()
+                if len(committee_name) > 0:
+                    if house == 'COUNCILORS':
+                        committee = build_committee('参議院'+committee_name, house)
+                    elif house == 'REPRESENTATIVES':
+                        committee = build_committee('衆議院'+committee_name, house)
+                    return committee.id
             return None
 
         tables = response.xpath('//table')
@@ -124,12 +124,14 @@ class SangiinSpider(SpiderTemplate):
         self.gql_client.merge(bill)
         LOGGER.info(f'merged date for {bill.id}')
 
-        maybe_sangiin_committee_id = convert_committee_name_to_id('参議院'+sangiin_committee_data['付託委員会等'])
+        maybe_sangiin_committee_id = extract_committee_id_or_none(sangiin_committee_data,'付託委員会等',
+                                                                  'COUNCILORS')
         if maybe_sangiin_committee_id:
             self.gql_client.link(bill.id, maybe_sangiin_committee_id)
             LOGGER.info(f'linked {bill.id} to {maybe_sangiin_committee_id}')
 
-        maybe_shugiin_committee_id = convert_committee_name_to_id('衆議院'+shugiin_committee_data['付託委員会等'])
+        maybe_shugiin_committee_id = extract_committee_id_or_none(shugiin_committee_data, '付託委員会等',
+                                                                  'REPRESENTATIVES')
         if maybe_shugiin_committee_id:
             self.gql_client.link(bill.id, maybe_shugiin_committee_id)
             LOGGER.info(f'linked {bill.id} to {maybe_shugiin_committee_id}')
