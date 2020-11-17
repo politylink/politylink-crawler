@@ -31,12 +31,19 @@ class ManualCommitteeSpider(SpiderTemplate):
     start_urls = ['https://google.com']
 
     def parse(self, response):
+        def build_committee_with_meta(committee_name, house, num_members, description):
+            committee = build_committee(committee_name, house)
+            if num_members:
+                committee.num_members = num_members
+            committee.description = description
+            return committee
+
         committees = [
-            build_committee('衆議院本会議', 'REPRESENTATIVES', 465, description=main_desc),
-            build_committee('参議院本会議', 'COUNCILORS', 248, description=main_desc),
-            build_committee('衆議院憲法審査会', 'REPRESENTATIVES', None, description=kenpou_desc),
-            build_committee('衆議院情報監視審査会', 'REPRESENTATIVES', None, description=jouhou_desc),
-            build_committee('衆議院政治倫理審査会', 'REPRESENTATIVES', None, description=seiji_desc),
+            build_committee_with_meta('衆議院本会議', 'REPRESENTATIVES', 465, description=main_desc),
+            build_committee_with_meta('参議院本会議', 'COUNCILORS', 248, description=main_desc),
+            build_committee_with_meta('衆議院憲法審査会', 'REPRESENTATIVES', None, description=kenpou_desc),
+            build_committee_with_meta('衆議院情報監視審査会', 'REPRESENTATIVES', None, description=jouhou_desc),
+            build_committee_with_meta('衆議院政治倫理審査会', 'REPRESENTATIVES', None, description=seiji_desc),
         ]
         self.gql_client.bulk_merge(committees)
         LOGGER.info(f'merged {len(committees)} committees')

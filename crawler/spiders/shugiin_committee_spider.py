@@ -32,7 +32,9 @@ class ShugiinCommitteeSpider(SpiderTemplate):
             except Exception as e:
                 LOGGER.warning(f'failed to parse row:\n{row.get()}\n{e}')
                 continue
-            committee = build_committee(committee_name, 'REPRESENTATIVES', num_members, topics)
+            committee = build_committee(committee_name, 'REPRESENTATIVES')
+            committee.num_members = num_members
+            committee.topics = topics
             committees.append(committee)
         return committees
 

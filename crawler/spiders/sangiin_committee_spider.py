@@ -29,7 +29,9 @@ class SangiinCommitteeSpider(SpiderTemplate):
         assert len(name_list) == len(num_members_list) == len(topics_list)
         committees = []
         for name, num_members, topics in zip(name_list, num_members_list, topics_list):
-            committee = build_committee(name, "COUNCILORS", num_members, topics)
+            committee = build_committee(name, "COUNCILORS")
+            committee.num_members = num_members
+            committee.topics = topics
             committees.append(committee)
         return committees
 

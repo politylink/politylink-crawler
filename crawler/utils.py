@@ -105,16 +105,10 @@ def build_speech(minutes_id, order_in_minutes):
     return speech
 
 
-def build_committee(committee_name, house, num_members=None, topics=None, description=None):
+def build_committee(committee_name, house):
     committee = Committee(None)
     committee.name = committee_name
     committee.house = house
-    if num_members:
-        committee.num_members = num_members
-    if topics:
-        committee.topics = topics
-    if description:
-        committee.description = description
     committee.id = idgen(committee)
     return committee
 
