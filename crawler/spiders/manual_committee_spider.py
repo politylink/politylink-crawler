@@ -31,10 +31,10 @@ class ManualCommitteeSpider(SpiderTemplate):
     start_urls = ['https://google.com']
 
     def parse(self, response):
-
         def build_committee_with_meta(committee_name, house, num_members, description):
             committee = build_committee(committee_name, house)
-            committee.num_members = num_members
+            if num_members:
+                committee.num_members = num_members
             committee.description = description
             return committee
 
@@ -47,4 +47,3 @@ class ManualCommitteeSpider(SpiderTemplate):
         ]
         self.gql_client.bulk_merge(committees)
         LOGGER.info(f'merged {len(committees)} committees')
-
