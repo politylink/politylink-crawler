@@ -33,6 +33,12 @@ class ShuhouSpider(TableSpiderTemplate, ManualSpiderTemplate):
         {'title': UrlTitle.SINKYU_PDF,
          'bill': '第201回国会衆法第16号',
          'url': 'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/housei/pdf/201hou16sinkyu.pdf/$File/201hou16sinkyu.pdf'},
+        {'title': UrlTitle.GAIYOU_PDF,
+         'bill': '第196回国会衆法第42号',
+         'url': 'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/housei/pdf/196hou42youkou.pdf/$File/196hou42youkou.pdf'},
+        {'title': UrlTitle.SINKYU_PDF,
+         'bill': '第196回国会衆法第42号',
+         'url': 'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/housei/pdf/196hou42sinkyu.pdf/$File/196hou42sinkyu.pdf'},
     ]
 
     def parse(self, response):

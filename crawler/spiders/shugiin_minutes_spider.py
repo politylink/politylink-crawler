@@ -17,7 +17,6 @@ class ShugiinMinutesSpider(SpiderTemplate):
     def __init__(self, diet=None, *args, **kwargs):
         super(ShugiinMinutesSpider, self).__init__(*args, **kwargs)
         self.start_urls = [self.build_start_url(diet)]
-        LOGGER.info(self.start_urls)
 
     @staticmethod
     def build_start_url(diet=None):
@@ -25,6 +24,7 @@ class ShugiinMinutesSpider(SpiderTemplate):
         return template.format(diet) if diet else template.format('')
 
     def parse(self, response):
+        LOGGER.info(f'got response from {response.url}')
         committees = []
         for table in response.xpath('//table')[:2]:
             committees += self.scrape_committees_from_table(table, response.url)

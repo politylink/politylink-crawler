@@ -12,13 +12,21 @@ LOGGER = getLogger(__name__)
 class SangiinSpider(SpiderTemplate):
     name = 'sangiin'
     domain = 'sangiin.go.jp'
-    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/gian/203/gian.htm']
+
+    def __init__(self, diet, *args, **kwargs):
+        super(SangiinSpider, self).__init__(*args, **kwargs)
+        self.start_urls = [self.build_start_url(diet)]
+
+    @staticmethod
+    def build_start_url(diet):
+        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/gian/{diet}/gian.htm'
 
     def parse(self, response):
         """
         議案一覧ページからBillとURLを取得し、GraphQLに保存する
         """
 
+        LOGGER.info(f'got response from {response.url}')
         bills, urls = self.scrape_bills_and_urls(response)
         self.gql_client.bulk_merge(bills)
         LOGGER.info(f'merged {len(bills)} bills')
