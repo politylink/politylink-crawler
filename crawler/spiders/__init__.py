@@ -3,10 +3,11 @@ from urllib.parse import urljoin
 
 import scrapy
 
-from crawler.utils import extract_text, build_url, UrlTitle
+from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise
 from politylink.elasticsearch.client import ElasticsearchClient
+from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
-from politylink.graphql.schema import Minutes
+from politylink.graphql.schema import Minutes, News
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
 
 LOGGER = logging.getLogger(__name__)
@@ -151,4 +152,24 @@ class TvSpiderTemplate(SpiderTemplate):
             yield response.follow(self.build_next_url(), callback=self.parse)
 
     def scrape_minutes(self, response) -> Minutes:
+        NotImplemented
+
+
+class NewsSpiderTemplate(SpiderTemplate):
+    def parse_news(self, response):
+        """
+        NewsとNewsTextをGraphQLに保存する
+        """
+
+        try:
+            news, news_text = self.scrape_news_and_text(response)
+            validate_news_or_raise(news)
+            validate_news_text_or_raise(news_text)
+            self.gql_client.merge(news)
+            self.es_client.index(news_text)
+            LOGGER.info(f'saved {news.id}')
+        except Exception:
+            LOGGER.exception(f'failed to save News from {response.url}')
+
+    def scrape_news_and_text(self, response) -> (News, NewsText):
         NotImplemented
