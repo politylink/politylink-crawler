@@ -158,7 +158,7 @@ class TvSpiderTemplate(SpiderTemplate):
 class NewsSpiderTemplate(SpiderTemplate):
     def parse_news(self, response):
         """
-        NewsとNewsTextをGraphQLに保存する
+        NewsとNewsTextをGraphQLとElasticSearchにそれぞれ保存する
         """
 
         try:
