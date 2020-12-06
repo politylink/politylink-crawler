@@ -3,7 +3,7 @@ from logging import getLogger
 
 import scrapy
 
-from crawler.spiders import SpiderTemplate
+from crawler.spiders import NewsSpiderTemplate
 from crawler.utils import extract_json_ld_or_none, build_news, extract_thumbnail_or_none, \
     strip_join, to_neo4j_datetime, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
@@ -11,7 +11,7 @@ from politylink.elasticsearch.schema import NewsText
 LOGGER = getLogger(__name__)
 
 
-class ReutersSpider(SpiderTemplate):
+class ReutersSpider(NewsSpiderTemplate):
     name = 'reuters'
     publisher = 'ロイター'
 
@@ -38,32 +38,27 @@ class ReutersSpider(SpiderTemplate):
         if self.news_count < self.limit:
             yield response.follow(self.build_next_url(), self.parse)
 
-    def parse_news(self, response):
-        try:
-            maybe_json_ld = extract_json_ld_or_none(response)
-            title = response.xpath('//h1/text()').get().strip()
-            body = strip_join(response.xpath('//div[@class="ArticleBodyWrapper"]/p/text()').getall())
+    def scrape_news_and_text(self, response):
+        maybe_json_ld = extract_json_ld_or_none(response)
+        title = response.xpath('//h1/text()').get().strip()
+        body = strip_join(response.xpath('//div[@class="ArticleBodyWrapper"]/p/text()').getall())
 
-            news = build_news(response.url, self.publisher)
-            news.title = title
-            news.is_paid = False
-            if maybe_json_ld:
-                json_ld = maybe_json_ld
-                maybe_thumbnail = extract_thumbnail_or_none(json_ld)
-                if maybe_thumbnail:
-                    news.thumbnail = maybe_thumbnail
-                news.published_at = self.to_datetime(json_ld['datePublished'])
-                news.last_modified_at = self.to_datetime(json_ld['dateModified'])
-            self.gql_client.merge(news)
+        news = build_news(response.url, self.publisher)
+        news.title = title
+        news.is_paid = False
+        if maybe_json_ld:
+            json_ld = maybe_json_ld
+            maybe_thumbnail = extract_thumbnail_or_none(json_ld)
+            if maybe_thumbnail:
+                news.thumbnail = maybe_thumbnail
+            news.published_at = self.to_datetime(json_ld['datePublished'])
+            news.last_modified_at = self.to_datetime(json_ld['dateModified'])
 
-            news_text = NewsText({'id': news.id})
-            news_text.title = title
-            news_text.body = body
-            self.es_client.index(news_text)
+        news_text = NewsText({'id': news.id})
+        news_text.title = title
+        news_text.body = body
 
-            LOGGER.info(f'saved {news.id}')
-        except Exception:
-            LOGGER.exception(f'failed to parse News from {response.url}')
+        return news, news_text
 
     @staticmethod
     def to_datetime(dt_str):
