@@ -4,7 +4,7 @@ from enum import Enum
 from logging import getLogger
 from urllib.parse import urljoin
 
-from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News
+from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -21,6 +21,7 @@ class UrlTitle(str, Enum):
     IINKAI_SITSUGI = '質疑項目'
     SHINGI_TYUKEI = '審議中継'
     PUBLIC_COMMENT = 'パブリックコメント'
+    GIIN_ZYOUHOU = '議員情報'
 
 
 class BillCategory(str, Enum):
@@ -111,6 +112,13 @@ def build_committee(committee_name, house):
     committee.house = house
     committee.id = idgen(committee)
     return committee
+
+
+def build_member(name):
+    member = Member(None)
+    member.name = name
+    member.id = idgen(member)
+    return member
 
 
 def to_neo4j_datetime(dt):
