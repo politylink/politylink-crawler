@@ -40,9 +40,9 @@ class SpiderTemplate(scrapy.Spider):
         else:
             LOGGER.warning(f'found multiple Bills for {bill_query}')
 
-    def delete_old_urls(self, bill_id, url_title):
-        bill = self.gql_client.get(bill_id)
-        for url in bill.urls:
+    def delete_old_urls(self, src_id, url_title):
+        obj = self.gql_client.get(src_id)
+        for url in obj.urls:
             if url.title == url_title:
                 self.gql_client.delete(url.id)
                 LOGGER.info(f'deleted {url.id}')
