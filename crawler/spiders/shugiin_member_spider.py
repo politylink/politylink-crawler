@@ -62,7 +62,10 @@ class ShugiinMemberSpider(SpiderTemplate):
             assert len(cells) == 5
 
             name = ''.join(extract_text(cells[0]).strip()[:-1].split())  # remove
-            tags = [extract_text(cells[2]), extract_text(cells[3])]  # store 会派 and 選挙区 as tags for now
+            tags = [  # store 会派 and 選挙区 as tags for now
+                extract_text(cells[2]).strip(),
+                extract_text(cells[3]).strip()
+            ]
             member = build_member(name)
             member.tags = tags
             member.house = 'REPRESENTATIVES'
