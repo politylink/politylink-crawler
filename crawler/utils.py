@@ -199,11 +199,17 @@ def validate_news_text_or_raise(news):
 
 def parse_name_str(name_str):
     """
-    :input: "逢沢　一郎（あいさわ　いちろう）"
+    :input: "逢沢　一郎（あいさわ　いちろう）" or "蓮舫（れんほう）"
     :return: (first_name, last_name, first_name_hira, last_name_hira)
     """
+    name_str = name_str.strip()
+    pattern = r'([^（）]+)（([^（）]+)）'
+    if not re.fullmatch(pattern, name_str):
+        raise ValueError(f'invalid name_str="{name_str}"')
     parts = re.split('[ |　|（|）]', name_str.strip())
-    for i in range(4):
-        if not parts[i]:
-            raise ValueError(f'part[{i}] is empty: str={name_str}, parts={parts}')
-    return parts[1], parts[0], parts[3], parts[2]
+    if len(parts) == 3:
+        return parts[0], '', parts[1], ''
+    elif len(parts) == 5:
+        return parts[1], parts[0], parts[3], parts[2]
+    else:
+        raise ValueError(f'invalid split result: name_str={name_str}, parts={parts}')
