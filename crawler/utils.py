@@ -195,3 +195,15 @@ def validate_news_or_raise(news):
 
 def validate_news_text_or_raise(news):
     validate_item_or_raise(news, ['id', 'title', 'body'])
+
+
+def parse_name_str(name_str):
+    """
+    :input: "逢沢　一郎（あいさわ　いちろう）"
+    :return: (first_name, last_name, first_name_hira, last_name_hira)
+    """
+    parts = re.split('[ |　|（|）]', name_str.strip())
+    for i in range(4):
+        if not parts[i]:
+            raise ValueError(f'part[{i}] is empty: str={name_str}, parts={parts}')
+    return parts[1], parts[0], parts[3], parts[2]
