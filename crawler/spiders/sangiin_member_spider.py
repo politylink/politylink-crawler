@@ -8,11 +8,10 @@ from politylink.graphql.schema import Member
 LOGGER = getLogger(__name__)
 
 
-class ShugiinMemberSpider(SpiderTemplate):
-    name = 'shugiin_member'
-    domain = 'shugiin.go.jp'
-    start_urls = [f'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/{i}giin.htm'
-                  for i in range(1, 11)]
+class SangiinMemberSpider(SpiderTemplate):
+    name = 'sangiin_member'
+    domain = 'sangiin.go.jp'
+    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/giin/203/giin.htm']
 
     def parse(self, response):
         members, urls = self.scrape_members_and_urls(response)
@@ -31,7 +30,7 @@ class ShugiinMemberSpider(SpiderTemplate):
         member.id = response.meta['member_id']
         contents = response.xpath('//div[@id="contents"]')
 
-        name_str = contents.xpath('./h2/text()').get()
+        name_str = contents.xpath('.//h1[@class="profile-name"]/text()').get()
         try:
             member.first_name, member.last_name, member.first_name_hira, member.last_name_hira = \
                 parse_name_str(name_str)
@@ -40,13 +39,13 @@ class ShugiinMemberSpider(SpiderTemplate):
             LOGGER.warning(f'failed to parse name={name_str}: e={e}')
 
         desc = []
-        for text in contents.xpath('.//text()').getall():
+        for text in contents.xpath('.//p/text()').getall():
             text = text.strip()
             if text:
                 desc.append(text)
         member.description = ' '.join(desc)
 
-        maybe_image_src = response.xpath('//div[@id="photo"]/img/@src').get()
+        maybe_image_src = response.xpath('//div[@id="profile-photo"]/img/@src').get()
         if maybe_image_src:
             member.image = urljoin(response.url, maybe_image_src)
 
@@ -55,19 +54,19 @@ class ShugiinMemberSpider(SpiderTemplate):
 
     def scrape_members_and_urls(self, response):
         members, urls = [], []
-        table = response.xpath('//table[@width="100%"]')[0]
+        table = response.xpath('//table[@summary="議員一覧（50音順）"]')[0]
         for row in table.xpath('./tr')[1:]:  # skip header
             cells = row.xpath('./td')
-            assert len(cells) == 5
+            assert len(cells) == 6
 
-            name = ''.join(extract_text(cells[0]).strip()[:-1].split())  # remove
+            name = ''.join(extract_text(cells[0]).strip().split())
             tags = [  # store 会派 and 選挙区 as tags for now
                 extract_text(cells[2]).strip(),
                 extract_text(cells[3]).strip()
             ]
             member = build_member(name)
             member.tags = tags
-            member.house = 'REPRESENTATIVES'
+            member.house = 'COUNCILORS'
             members.append(member)
 
             maybe_href = extract_full_href_or_none(cells[0], response.url)
