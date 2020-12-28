@@ -94,6 +94,6 @@ class SangiinTvSpider(TvSpiderTemplate):
             minutes.topics = topics
         speakers = content.xpath('./ul/li/a/text()').getall()
         if speakers:
-            LOGGER.debug(f'scraped speakers={topics}')
+            LOGGER.debug(f'scraped speakers={speakers}')
             minutes.speakers = speakers
         return minutes
