@@ -8,7 +8,7 @@ from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, News
-from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
+from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class SpiderTemplate(scrapy.Spider):
         self.bill_finder = BillFinder()
         self.minutes_finder = MinutesFinder()
         self.committee_finder = CommitteeFinder()
+        self.member_finder = MemberFinder()
 
     def parse(self, response):
         NotImplemented

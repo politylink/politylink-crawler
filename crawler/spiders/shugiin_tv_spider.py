@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timedelta
 from logging import getLogger
+from typing import List
 
 import scrapy
 
@@ -63,21 +64,38 @@ class ShugiinTvSpider(SpiderTemplate):
             )
 
     def parse_minutes(self, response):
-        maybe_minutes = self.scrape_minutes(response)
-        if not maybe_minutes:
-            LOGGER.warning(f'failed to parse minutes from {response.url}. skipping...')
+        try:
+            minutes = self.scrape_minutes(response)
+        except Exception:
+            LOGGER.exception(f'failed to parse minutes from {response.url}')
+            return
 
-        minutes = maybe_minutes
         url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
         self.gql_client.bulk_merge([minutes, url])
-        self.gql_client.link(url.id, minutes.id)
         LOGGER.info(f'merged {minutes.id} and {url.id}')
+
+        self.gql_client.link(url.id, minutes.id)
+        self.link_bills_by_topics(minutes)
+
         try:
             committee = self.committee_finder.find_one(minutes.name)
             self.gql_client.link(minutes.id, committee.id)
         except ValueError as e:
             LOGGER.warning(e)
-        self.link_bills_by_topics(minutes)
+
+        if hasattr(minutes, 'speakers'):
+            from_ids = []
+            to_ids = []
+            for speaker in minutes.speakers:
+                try:
+                    member = self.member_finder.find_one(speaker)
+                except ValueError as e:
+                    LOGGER.debug(e)  # this is expected when speaker is not member
+                else:
+                    from_ids.append(member.id)
+                    to_ids.append(minutes.id)
+            self.gql_client.bulk_link(from_ids, to_ids)
+            LOGGER.info(f'linked {len(from_ids)} members')
 
     def scrape_minutes(self, response):
         date_time, meeting_name = None, None
@@ -89,19 +107,32 @@ class ShugiinTvSpider(SpiderTemplate):
                 date_time = datetime.strptime(desc, '%Y年%m月%d日')
             if term == '会議名':
                 meeting_name = self.get_full_meeting_name(desc)
-        if date_time and meeting_name:
-            minutes = build_minutes(self.house_name + meeting_name, date_time)
-            topics = []
-            tables = response.xpath('//div[@id="library2"]/table')
-            if tables:
-                for row in tables[0].xpath('./tr'):
-                    topic = row.xpath('./td//text()').get()
-                    if topic and not topic.startswith('案件'):
-                        topics.append(topic)
-            if topics:
-                minutes.topics = topics
-            return minutes
-        return None
+        if not (date_time and meeting_name):
+            msg = f'failed to extract minutes detail: date_time={date_time}, meeting_name={meeting_name}'
+            raise ValueError(msg)
+        minutes = build_minutes(self.house_name + meeting_name, date_time)
+
+        tables = response.xpath('//div[@id="library2"]/table')
+        topics = self.scrape_table(tables[0])
+        if topics:
+            LOGGER.debug(f'scraped topics={topics}')
+            minutes.topics = topics
+        speakers = self.scrape_table(tables[2])
+        if speakers:
+            LOGGER.debug(f'scraped speakers={speakers}')
+            minutes.speakers = speakers  # this field won't be directly write to GraphQL
+        return minutes
+
+    @staticmethod
+    def scrape_table(table) -> List[str]:
+        texts = []
+        for row in table.xpath('./tr'):
+            if './images/spacer.gif' not in row.get():  # skip header row
+                continue
+            maybe_text = next((x.strip() for x in row.xpath('./td//text()').getall() if x.strip()), None)
+            if maybe_text:
+                texts.append(maybe_text)
+        return texts
 
     @staticmethod
     def get_full_meeting_name(meeting_name):
