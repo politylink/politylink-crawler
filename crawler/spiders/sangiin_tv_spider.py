@@ -24,7 +24,7 @@ class SangiinTvSpider(TvSpiderTemplate):
                 msg = f'failed to get last sid from GraphQL, you need to specify next_id argument'
                 raise Exception(msg) from e
 
-        self.next_id = next_id
+        self.next_id = int(next_id)
         self.failure_in_row_limit = failure_in_row_limit
         self.failure_in_row = 0
 
