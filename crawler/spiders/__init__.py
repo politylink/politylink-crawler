@@ -8,7 +8,7 @@ from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import Minutes, News
-from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder
+from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,21 +24,21 @@ class SpiderTemplate(scrapy.Spider):
         self.bill_finder = BillFinder()
         self.minutes_finder = MinutesFinder()
         self.committee_finder = CommitteeFinder()
+        self.member_finder = MemberFinder()
 
     def parse(self, response):
         NotImplemented
 
     def store_urls(self, urls, bill_query):
-        bills = self.bill_finder.find(bill_query)
-        if len(bills) == 0:
-            LOGGER.warning(f'failed to find Bill for {bill_query}')
-        elif len(bills) == 1:
-            bill = bills[0]
-            if urls:
-                self.gql_client.bulk_merge(urls)
-                self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
+        if not urls:
+            return
+        try:
+            bill = self.bill_finder.find_one(bill_query)
+        except ValueError as e:
+            LOGGER.warning(e)
         else:
-            LOGGER.warning(f'found multiple Bills for {bill_query}')
+            self.gql_client.bulk_merge(urls)
+            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
 
     def delete_old_urls(self, src_id, url_title):
         obj = self.gql_client.get(src_id)
@@ -53,14 +53,14 @@ class SpiderTemplate(scrapy.Spider):
 
         from_ids, to_ids = [], []
         for topic in minutes.topics:
-            bills = self.bill_finder.find(topic)
-            if len(bills) == 1:
-                bill = bills[0]
+            try:
+                bill = self.bill_finder.find_one(topic)
+            except ValueError as e:
+                LOGGER.warning(e)
+            else:
                 from_ids.append(minutes.id)
                 to_ids.append(bill.id)
-                LOGGER.debug(f'linked {minutes.id} to {bill.id}')
-            elif len(bills) > 1:
-                LOGGER.warning(f'found multiple bills that match with "{topic}" in {minutes.id}: {bills}')
+                LOGGER.debug(f'link {minutes.id} to {bill.id}')
         self.gql_client.bulk_link(from_ids, to_ids)
         LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
 
@@ -114,45 +114,39 @@ class ManualSpiderTemplate(SpiderTemplate):
 
 
 class TvSpiderTemplate(SpiderTemplate):
-    def __init__(self, next_id, failure_in_row_limit, *args, **kwargs):
-        super(TvSpiderTemplate, self).__init__(*args, **kwargs)
-        self.next_id = next_id
-        self.failure_in_row_limit = failure_in_row_limit
-        self.failure_in_row = 0
 
-    def build_next_url(self) -> str:
-        NotImplemented
-
-    def start_requests(self):
-        yield scrapy.Request(self.build_next_url(), self.parse)
-
-    def parse(self, response):
+    def store_minutes_and_url(self, minutes, url):
         """
-        MinutesとURLをGraphQLに保存する
+        store minutes and url to GraphQL with links to Committee and Member
         """
 
-        minutes = self.scrape_minutes(response)
-        if minutes:
-            url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
-            self.gql_client.bulk_merge([minutes, url])
-            self.gql_client.link(url.id, minutes.id)
-            LOGGER.info(f'merged {minutes.id} and {url.id}')
-            try:
-                committee = self.committee_finder.find_one(minutes.name)
-                self.gql_client.link(minutes.id, committee.id)
-            except ValueError as e:
-                LOGGER.warning(e)
-            self.link_bills_by_topics(minutes)
-            self.failure_in_row = 0
+        self.gql_client.bulk_merge([minutes, url])
+        LOGGER.info(f'merged {minutes.id} and {url.id}')
+
+        self.gql_client.link(url.id, minutes.id)
+        self.link_bills_by_topics(minutes)
+
+        try:
+            committee = self.committee_finder.find_one(minutes.name)
+        except ValueError as e:
+            LOGGER.warning(e)
         else:
-            LOGGER.info(f'failed to parse minutes from {response.url}. skipping...')
-            self.failure_in_row += 1
+            self.gql_client.link(minutes.id, committee.id)
 
-        if self.failure_in_row < self.failure_in_row_limit:
-            yield response.follow(self.build_next_url(), callback=self.parse)
-
-    def scrape_minutes(self, response) -> Minutes:
-        NotImplemented
+        if hasattr(minutes, 'speakers'):
+            from_ids = []
+            to_ids = []
+            for speaker in minutes.speakers:
+                try:
+                    member = self.member_finder.find_one(speaker)
+                except ValueError as e:
+                    LOGGER.debug(e)  # this is expected when speaker is not member
+                else:
+                    from_ids.append(member.id)
+                    to_ids.append(minutes.id)
+            if from_ids:
+                self.gql_client.bulk_link(from_ids, to_ids)
+                LOGGER.info(f'linked {len(from_ids)} members')
 
 
 class NewsSpiderTemplate(SpiderTemplate):
