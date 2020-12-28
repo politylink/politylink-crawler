@@ -19,6 +19,7 @@ class SpiderTemplate(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(SpiderTemplate, self).__init__(*args, **kwargs)
         logging.getLogger('elasticsearch').setLevel(logging.WARNING)
+        logging.getLogger('sgqlc.endpoint.http').setLevel(logging.WARNING)
         self.gql_client = GraphQLClient()
         self.es_client = ElasticsearchClient()
         self.bill_finder = BillFinder()
@@ -56,7 +57,7 @@ class SpiderTemplate(scrapy.Spider):
             try:
                 bill = self.bill_finder.find_one(topic)
             except ValueError as e:
-                LOGGER.warning(e)
+                LOGGER.debug(e)  # this is expected when topic does not include bill
             else:
                 from_ids.append(minutes.id)
                 to_ids.append(bill.id)

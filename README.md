@@ -18,3 +18,5 @@ poetry run scrapy crawl minutes -a start_date=2020-01-01 -a end_date=2020-07-01 
 poetry run scrapy crawl shugiin_tv -a start_date=2020-01-01 -a end_date=2020-01-02
 poetry run scrapy crawl mainichi -a limit=5
 ```
+
+add `--loglevel DEBUG` if needed.
