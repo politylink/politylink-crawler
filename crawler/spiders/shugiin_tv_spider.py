@@ -5,13 +5,13 @@ from typing import List
 
 import scrapy
 
-from crawler.spiders import SpiderTemplate
+from crawler.spiders import SpiderTemplate, TvSpiderTemplate
 from crawler.utils import build_minutes, build_url, UrlTitle
 
 LOGGER = getLogger(__name__)
 
 
-class ShugiinTvSpider(SpiderTemplate):
+class ShugiinTvSpider(TvSpiderTemplate):
     name = 'shugiin_tv'
     domain = 'shugiintv.go.jp'
     house_name = '衆議院'
@@ -69,33 +69,8 @@ class ShugiinTvSpider(SpiderTemplate):
         except Exception:
             LOGGER.exception(f'failed to parse minutes from {response.url}')
             return
-
         url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
-        self.gql_client.bulk_merge([minutes, url])
-        LOGGER.info(f'merged {minutes.id} and {url.id}')
-
-        self.gql_client.link(url.id, minutes.id)
-        self.link_bills_by_topics(minutes)
-
-        try:
-            committee = self.committee_finder.find_one(minutes.name)
-            self.gql_client.link(minutes.id, committee.id)
-        except ValueError as e:
-            LOGGER.warning(e)
-
-        if hasattr(minutes, 'speakers'):
-            from_ids = []
-            to_ids = []
-            for speaker in minutes.speakers:
-                try:
-                    member = self.member_finder.find_one(speaker)
-                except ValueError as e:
-                    LOGGER.debug(e)  # this is expected when speaker is not member
-                else:
-                    from_ids.append(member.id)
-                    to_ids.append(minutes.id)
-            self.gql_client.bulk_link(from_ids, to_ids)
-            LOGGER.info(f'linked {len(from_ids)} members')
+        self.store_minutes_and_url(minutes, url)
 
     def scrape_minutes(self, response):
         date_time, meeting_name = None, None
