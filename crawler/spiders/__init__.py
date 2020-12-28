@@ -128,9 +128,10 @@ class TvSpiderTemplate(SpiderTemplate):
 
         try:
             committee = self.committee_finder.find_one(minutes.name)
-            self.gql_client.link(minutes.id, committee.id)
         except ValueError as e:
             LOGGER.warning(e)
+        else:
+            self.gql_client.link(minutes.id, committee.id)
 
         if hasattr(minutes, 'speakers'):
             from_ids = []
@@ -143,8 +144,9 @@ class TvSpiderTemplate(SpiderTemplate):
                 else:
                     from_ids.append(member.id)
                     to_ids.append(minutes.id)
-            self.gql_client.bulk_link(from_ids, to_ids)
-            LOGGER.info(f'linked {len(from_ids)} members')
+            if from_ids:
+                self.gql_client.bulk_link(from_ids, to_ids)
+                LOGGER.info(f'linked {len(from_ids)} members')
 
 
 class NewsSpiderTemplate(SpiderTemplate):
