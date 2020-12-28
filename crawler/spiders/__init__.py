@@ -30,16 +30,15 @@ class SpiderTemplate(scrapy.Spider):
         NotImplemented
 
     def store_urls(self, urls, bill_query):
-        bills = self.bill_finder.find(bill_query)
-        if len(bills) == 0:
-            LOGGER.warning(f'failed to find Bill for {bill_query}')
-        elif len(bills) == 1:
-            bill = bills[0]
-            if urls:
-                self.gql_client.bulk_merge(urls)
-                self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
+        if not urls:
+            return
+        try:
+            bill = self.bill_finder.find_one(bill_query)
+        except ValueError as e:
+            LOGGER.warning(e)
         else:
-            LOGGER.warning(f'found multiple Bills for {bill_query}')
+            self.gql_client.bulk_merge(urls)
+            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
 
     def delete_old_urls(self, src_id, url_title):
         obj = self.gql_client.get(src_id)
