@@ -16,11 +16,11 @@ class SangiinSpider(SpiderTemplate):
     def __init__(self, diet, *args, **kwargs):
         super(SangiinSpider, self).__init__(*args, **kwargs)
         self.diet = build_diet(diet)
-        self.start_urls = [self.build_start_url(self.diet)]
+        self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
-    def build_start_url(diet):
-        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/gian/{diet.number}/gian.htm'
+    def build_start_url(diet_number):
+        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/gian/{diet_number}/gian.htm'
 
     def parse(self, response):
         """

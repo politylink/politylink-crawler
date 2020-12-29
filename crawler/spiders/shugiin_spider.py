@@ -15,11 +15,11 @@ class ShugiinSpider(SpiderTemplate):
     def __init__(self, diet, *args, **kwargs):
         super(ShugiinSpider, self).__init__(*args, **kwargs)
         self.diet = build_diet(diet)
-        self.start_urls = [self.build_start_url(self.diet)]
+        self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
-    def build_start_url(diet):
-        return f'http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/kaiji{diet.number}.htm'
+    def build_start_url(diet_number):
+        return f'http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/kaiji{diet_number}.htm'
 
     def parse(self, response):
         """
