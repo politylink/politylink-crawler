@@ -2,7 +2,7 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, build_committee, \
-    to_neo4j_datetime, UrlTitle, BillCategory
+    to_neo4j_datetime, UrlTitle, BillCategory, build_diet
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -15,11 +15,12 @@ class SangiinSpider(SpiderTemplate):
 
     def __init__(self, diet, *args, **kwargs):
         super(SangiinSpider, self).__init__(*args, **kwargs)
-        self.start_urls = [self.build_start_url(diet)]
+        self.diet = build_diet(diet)
+        self.start_urls = [self.build_start_url(self.diet)]
 
     @staticmethod
     def build_start_url(diet):
-        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/gian/{diet}/gian.htm'
+        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/gian/{diet.number}/gian.htm'
 
     def parse(self, response):
         """
@@ -29,6 +30,7 @@ class SangiinSpider(SpiderTemplate):
         LOGGER.info(f'got response from {response.url}')
         bills, urls = self.scrape_bills_and_urls(response)
         self.gql_client.bulk_merge(bills)
+        self.gql_client.bulk_link(map(lambda x: x.id, bills), [self.diet.id] * len(bills))
         LOGGER.info(f'merged {len(bills)} bills')
 
         for url in urls:

@@ -19,7 +19,7 @@ class SpiderTemplate(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(SpiderTemplate, self).__init__(*args, **kwargs)
         logging.getLogger('elasticsearch').setLevel(logging.WARNING)
-        logging.getLogger('sgqlc.endpoint.http').setLevel(logging.WARNING)
+        logging.getLogger('sgqlc').setLevel(logging.WARNING)
         self.gql_client = GraphQLClient()
         self.es_client = ElasticsearchClient()
         self.bill_finder = BillFinder()
