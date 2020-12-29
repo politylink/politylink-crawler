@@ -1,7 +1,8 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
+    build_diet
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -10,15 +11,25 @@ LOGGER = getLogger(__name__)
 class ShugiinSpider(SpiderTemplate):
     name = 'shugiin'
     domain = 'shugiin.go.jp'
-    start_urls = ['http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/menu.htm']
+
+    def __init__(self, diet, *args, **kwargs):
+        super(ShugiinSpider, self).__init__(*args, **kwargs)
+        self.diet = build_diet(diet)
+        self.start_urls = [self.build_start_url(self.diet.number)]
+
+    @staticmethod
+    def build_start_url(diet_number):
+        return f'http://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/kaiji{diet_number}.htm'
 
     def parse(self, response):
         """
         議案一覧ページからBillとURLを取得し、GraphQLに保存する
         """
 
+        LOGGER.info(f'got response from {response.url}')
         bills, urls = self.scrape_bills_and_urls(response)
         self.gql_client.bulk_merge(bills)
+        self.gql_client.bulk_link(map(lambda x: x.id, bills), [self.diet.id] * len(bills))
         LOGGER.info(f'merged {len(bills)} bills')
 
         for url in urls:
