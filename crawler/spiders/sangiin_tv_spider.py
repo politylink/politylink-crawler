@@ -54,21 +54,24 @@ class SangiinTvSpider(TvSpiderTemplate):
 
     def parse(self, response):
         try:
-            minutes = self.scrape_minutes(response)
+            minutes, activity_list, url_list = self.scrape_minutes_activities_urls(response)
         except Exception:
-            LOGGER.info(f'failed to parse minutes from {response.url}')
+            LOGGER.exception(f'failed to parse minutes from {response.url}')
             self.failure_in_row += 1
             if self.failure_in_row < self.failure_in_row_limit:
                 yield response.follow(self.build_next_url(), callback=self.parse)
             return
 
-        url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
-        self.store_minutes_and_url(minutes, url)
+        self.gql_client.bulk_merge([minutes] + activity_list + url_list)
+        LOGGER.info(f'merged 1 Minutes, {len(activity_list)} activities and {len(url_list)} urls')
+        self.link_minutes(minutes)
+        self.link_activities(activity_list)
+        self.link_urls(url_list)
 
         self.failure_in_row = 0
         yield response.follow(self.build_next_url(), callback=self.parse)
 
-    def scrape_minutes(self, response):
+    def scrape_minutes_activities_urls(self, response):
         content = response.xpath('//div[@id="detail-contents-inner"]')
         if not content:
             content = response.xpath('//div[@id="detail-contents-inner2"]')
@@ -96,4 +99,10 @@ class SangiinTvSpider(TvSpiderTemplate):
         if speakers:
             LOGGER.debug(f'scraped speakers={speakers}')
             minutes.speakers = speakers
-        return minutes
+
+        activity_list, url_list = self.build_activities_and_urls(content.xpath('./ul/li/a'), minutes, response.url)
+        url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
+        url.to_id = minutes.id
+        url_list.append(url)
+
+        return minutes, activity_list, url_list

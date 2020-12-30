@@ -5,7 +5,7 @@ from typing import List
 
 import scrapy
 
-from crawler.spiders import SpiderTemplate, TvSpiderTemplate
+from crawler.spiders import TvSpiderTemplate
 from crawler.utils import build_minutes, build_url, UrlTitle
 
 LOGGER = getLogger(__name__)
@@ -65,14 +65,18 @@ class ShugiinTvSpider(TvSpiderTemplate):
 
     def parse_minutes(self, response):
         try:
-            minutes = self.scrape_minutes(response)
+            minutes, activity_list, url_list = self.scrape_minutes_activities_urls(response)
         except Exception:
             LOGGER.exception(f'failed to parse minutes from {response.url}')
             return
-        url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
-        self.store_minutes_and_url(minutes, url)
 
-    def scrape_minutes(self, response):
+        self.gql_client.bulk_merge([minutes] + activity_list + url_list)
+        LOGGER.info(f'merged 1 Minutes, {len(activity_list)} activities and {len(url_list)} urls')
+        self.link_minutes(minutes)
+        self.link_activities(activity_list)
+        self.link_urls(url_list)
+
+    def scrape_minutes_activities_urls(self, response):
         date_time, meeting_name = None, None
         for row in response.xpath('//div[@id="library"]/table//tr'):
             tds = row.xpath('./td')
@@ -85,8 +89,8 @@ class ShugiinTvSpider(TvSpiderTemplate):
         if not (date_time and meeting_name):
             msg = f'failed to extract minutes detail: date_time={date_time}, meeting_name={meeting_name}'
             raise ValueError(msg)
-        minutes = build_minutes(self.house_name + meeting_name, date_time)
 
+        minutes = build_minutes(self.house_name + meeting_name, date_time)
         tables = response.xpath('//div[@id="library2"]/table')
         topics = self.scrape_table(tables[0])
         if topics:
@@ -95,8 +99,14 @@ class ShugiinTvSpider(TvSpiderTemplate):
         speakers = self.scrape_table(tables[2])
         if speakers:
             LOGGER.debug(f'scraped speakers={speakers}')
-            minutes.speakers = speakers  # this field won't be directly write to GraphQL
-        return minutes
+            minutes.speakers = speakers  # this field won't be written to GraphQL directly
+
+        activity_list, url_list = self.build_activities_and_urls(tables.xpath('.//a'), minutes, response.url)
+        url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
+        url.to_id = minutes.id
+        url_list.append(url)
+
+        return minutes, activity_list, url_list
 
     @staticmethod
     def scrape_table(table) -> List[str]:

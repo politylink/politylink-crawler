@@ -4,7 +4,8 @@ from enum import Enum
 from logging import getLogger
 from urllib.parse import urljoin
 
-from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet
+from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet, \
+    Activity
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -126,6 +127,15 @@ def build_diet(number):
     diet.number = number
     diet.id = idgen(diet)
     return diet
+
+
+def build_minutes_activity(member_id, minutes_id, dt):
+    activity = Activity(None)
+    activity.member_id = member_id
+    activity.minutes_id = minutes_id
+    activity.datetime = to_neo4j_datetime(dt)
+    activity.id = idgen(activity)
+    return activity
 
 
 def to_neo4j_datetime(dt):
