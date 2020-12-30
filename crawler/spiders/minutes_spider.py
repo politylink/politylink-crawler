@@ -35,7 +35,7 @@ class MinutesSpider(SpiderTemplate):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, url_lst, speech_lst = self.scrape_minutes_and_speeches(response_body)
+        minutes_lst, url_lst, speech_lst = self.scrape_minutes_urls_speeches(response_body)
 
         self.gql_client.bulk_merge(minutes_lst + url_lst)
         LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(url_lst)} urls')
@@ -45,13 +45,14 @@ class MinutesSpider(SpiderTemplate):
 
         from_ids, to_ids = [], []
         for minutes in minutes_lst:
+            self.link_bills_by_topics(minutes)
             try:
                 committee = self.committee_finder.find_one(minutes.name)
-                from_ids.append(minutes.id)
-                to_ids.append(committee.id)
             except ValueError as e:
                 LOGGER.warning(e)
-            self.link_bills_by_topics(minutes)
+            else:
+                from_ids.append(minutes.id)
+                to_ids.append(committee.id)
         for url in url_lst:
             from_ids.append(url.id)
             to_ids.append(url.meta['minutes_id'])
@@ -67,7 +68,7 @@ class MinutesSpider(SpiderTemplate):
             yield response.follow(self.build_next_url(), callback=self.parse)
 
     @staticmethod
-    def scrape_minutes_and_speeches(response_body):
+    def scrape_minutes_urls_speeches(response_body):
         minutes_lst, url_lst, speech_lst = [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
@@ -75,6 +76,7 @@ class MinutesSpider(SpiderTemplate):
                 minutes = build_minutes(
                     meeting_rec['nameOfHouse'] + meeting_rec['nameOfMeeting'],
                     datetime.strptime(meeting_rec['date'], '%Y-%m-%d'))
+                minutes.ndl_min_id = meeting_rec['issueID']
                 topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
                 if topics:
                     minutes.topics = topics
