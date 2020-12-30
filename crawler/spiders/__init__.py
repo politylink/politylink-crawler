@@ -3,7 +3,8 @@ from urllib.parse import urljoin
 
 import scrapy
 
-from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise
+from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
+    build_minutes_activity
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
@@ -30,7 +31,34 @@ class SpiderTemplate(scrapy.Spider):
     def parse(self, response):
         NotImplemented
 
-    def store_urls(self, urls, bill_query):
+    def link_urls(self, urls):
+        """
+        link Url to parent resource
+        """
+
+        from_ids, to_ids = [], []
+        for url in urls:
+            if hasattr(url, 'to_id'):
+                from_ids.append(url.id)
+                to_ids.append(url.to_id)
+        if from_ids:
+            self.gql_client.bulk_link(from_ids, to_ids)
+
+    def link_activities(self, activities):
+        """
+        link Activity to Member, Bill, and Minutes
+        """
+
+        from_ids, to_ids = [], []
+        for activity in activities:
+            for id_field in ['member_id', 'bill_id', 'minutes_id']:
+                if hasattr(activity, id_field):
+                    from_ids.append(activity.id)
+                    to_ids.append(getattr(activity, id_field))
+        if from_ids:
+            self.gql_client.bulk_link(from_ids, to_ids)
+
+    def store_urls_for_bill(self, urls, bill_query):
         if not urls:
             return
         try:
@@ -62,8 +90,9 @@ class SpiderTemplate(scrapy.Spider):
                 from_ids.append(minutes.id)
                 to_ids.append(bill.id)
                 LOGGER.debug(f'link {minutes.id} to {bill.id}')
-        self.gql_client.bulk_link(from_ids, to_ids)
-        LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
+        if from_ids:
+            self.gql_client.bulk_link(from_ids, to_ids)
+            LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
 
 
 class TableSpiderTemplate(SpiderTemplate):
@@ -82,7 +111,7 @@ class TableSpiderTemplate(SpiderTemplate):
                 try:
                     bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
-                    self.store_urls(urls, bill_query)
+                    self.store_urls_for_bill(urls, bill_query)
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
@@ -110,21 +139,17 @@ class ManualSpiderTemplate(SpiderTemplate):
         for item in self.items:
             bill_query = item['bill']
             urls = [build_url(item['url'], item['title'], self.domain)]
-            self.store_urls(urls, bill_query)
+            self.store_urls_for_bill(urls, bill_query)
         LOGGER.info(f'merged {len(self.items)} urls')
 
 
 class TvSpiderTemplate(SpiderTemplate):
 
-    def store_minutes_and_url(self, minutes, url):
+    def link_minutes(self, minutes):
         """
-        store minutes and url to GraphQL with links to Committee and Member
+        link Minutes to Bill, Committee and Member
         """
 
-        self.gql_client.bulk_merge([minutes, url])
-        LOGGER.info(f'merged {minutes.id} and {url.id}')
-
-        self.gql_client.link(url.id, minutes.id)
         self.link_bills_by_topics(minutes)
 
         try:
@@ -148,6 +173,27 @@ class TvSpiderTemplate(SpiderTemplate):
             if from_ids:
                 self.gql_client.bulk_link(from_ids, to_ids)
                 LOGGER.info(f'linked {len(from_ids)} members')
+
+    def build_activities_and_urls(self, atags, minutes, response_url):
+        """
+        build Minutes Activities from a tags listed in TV page
+        """
+
+        activity_list, url_list = [], []
+        for a in atags:
+            text = a.xpath('./text()').get()
+            href = a.xpath('./@href').get()
+            try:
+                member = self.member_finder.find_one(text)
+            except ValueError as e:
+                LOGGER.debug(e)  # this is expected when speaker is not member
+            else:
+                activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
+                url = build_url(urljoin(response_url, href), UrlTitle.SHINGI_TYUKEI, self.domain)
+                url.to_id = activity.id
+                activity_list.append(activity)
+                url_list.append(url)
+        return activity_list, url_list
 
 
 class NewsSpiderTemplate(SpiderTemplate):
