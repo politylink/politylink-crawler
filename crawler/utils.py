@@ -138,6 +138,15 @@ def build_minutes_activity(member_id, minutes_id, dt):
     return activity
 
 
+def build_bill_activity(member_id, bill_id, dt):
+    activity = Activity(None)
+    activity.member_id = member_id
+    activity.bill_id = bill_id
+    activity.datetime = to_neo4j_datetime(dt)
+    activity.id = idgen(activity)
+    return activity
+
+
 def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day,
                                hour=dt.hour, minute=dt.minute, second=dt.second)

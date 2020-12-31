@@ -1,8 +1,8 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, build_committee, \
-    to_neo4j_datetime, UrlTitle, BillCategory, build_diet
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
+    BillCategory, build_diet, build_bill_activity
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -47,107 +47,19 @@ class SangiinSpider(SpiderTemplate):
 
     def parse_meisai(self, response):
         """
-        議案情報ページから各種日付を取得し、GraphQLに保存する
+        議案情報ページからBillとActivityを取得し、GraphQLに保存する
         """
 
-        def extract_datetime_or_none(data, key):
-            try:
-                if key in data:
-                    val = data[key].strip()
-                    if val:
-                        return DateConverter.convert(val)
-            except ValueError as e:
-                LOGGER.warning(f'failed to parse datetime from {data[key]}: {e}')
-            return None
+        bill, activities = self.scrape_bill_and_activities_from_meisai(response)
+        LOGGER.debug(bill)
+        LOGGER.debug(activities)
+        self.gql_client.bulk_merge([bill] + activities)
+        LOGGER.info(f'merged 1 bill and {len(activities)} activities')
+        if bill.committee_ids:
+            self.gql_client.bulk_link([bill.id] * len(bill.committee_ids), bill.committee_ids)
+        self.link_activities(activities)
 
-        def set_datetime_if_exists(key, maybe_datetime):
-            if maybe_datetime:
-                setattr(bill, key, to_neo4j_datetime(maybe_datetime))
-
-        def extract_first_house_or_none(data, key):
-            if key in data:
-                val = data[key].strip()
-                if val == '衆先議':
-                    return House.REPRESENTATIVES
-                elif val == '本院先議':
-                    return House.COUNCILORS
-            return None
-
-        def extract_committee_id_or_none(data, key, house):
-            if key in data:
-                committee_name = data[key].strip()
-                if len(committee_name) > 0:
-                    if house == 'COUNCILORS':
-                        committee_name = '参議院' + committee_name
-                    elif house == 'REPRESENTATIVES':
-                        committee_name = '衆議院' + committee_name
-                    committee = build_committee(committee_name, house)
-                    return committee.id
-            return None
-
-        tables = response.xpath('//table')
-        bill = Bill(None)
-        bill.id = response.meta['bill_id']
-
-        submission_data = self.parse_meisai_table(tables[1])
-        set_datetime_if_exists(
-            'submitted_date',
-            extract_datetime_or_none(submission_data, '提出日')
-        )
-
-        maybe_first_house = extract_first_house_or_none(submission_data, '先議区分')
-        if maybe_first_house:
-            bill.first_house = maybe_first_house
-
-        sangiin_committee_data = self.parse_meisai_table(tables[2])
-        if sangiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
-            set_datetime_if_exists(
-                'passed_councilors_committee_date',
-                extract_datetime_or_none(sangiin_committee_data, '議決日')
-            )
-        sangiin_data = self.parse_meisai_table(tables[3])
-        if sangiin_data.get('議決') in ['可決', '修正']:
-            set_datetime_if_exists(
-                'passed_councilors_date',
-                extract_datetime_or_none(sangiin_data, '議決日')
-            )
-        shugiin_committee_data = self.parse_meisai_table(tables[4])
-        if shugiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
-            set_datetime_if_exists(
-                'passed_representatives_committee_date',
-                extract_datetime_or_none(shugiin_committee_data, '議決日')
-            )
-        shugiin_data = self.parse_meisai_table(tables[5])
-        if shugiin_data.get('議決') in ['可決', '修正']:
-            set_datetime_if_exists(
-                'passed_representatives_date',
-                extract_datetime_or_none(shugiin_data, '議決日')
-            )
-        proclaim_data = self.parse_meisai_table(tables[6])
-        set_datetime_if_exists(
-            'proclaimed_date',
-            extract_datetime_or_none(proclaim_data, '公布年月日')
-        )
-
-        bill.is_passed = hasattr(bill, 'proclaimed_date') or \
-                         (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
-        self.gql_client.merge(bill)
-        LOGGER.info(f'merged date for {bill.id}')
-
-        maybe_sangiin_committee_id = extract_committee_id_or_none(sangiin_committee_data, '付託委員会等',
-                                                                  'COUNCILORS')
-        if maybe_sangiin_committee_id:
-            self.gql_client.link(bill.id, maybe_sangiin_committee_id)
-            LOGGER.info(f'linked {bill.id} to {maybe_sangiin_committee_id}')
-
-        maybe_shugiin_committee_id = extract_committee_id_or_none(shugiin_committee_data, '付託委員会等',
-                                                                  'REPRESENTATIVES')
-        if maybe_shugiin_committee_id:
-            self.gql_client.link(bill.id, maybe_shugiin_committee_id)
-            LOGGER.info(f'linked {bill.id} to {maybe_shugiin_committee_id}')
-
-    @staticmethod
-    def scrape_bills_and_urls(response):
+    def scrape_bills_and_urls(self, response):
         def get_bill_category_or_none(caption):
             if caption == '法律案（内閣提出）一覧':
                 return BillCategory.KAKUHOU
@@ -168,13 +80,12 @@ class SangiinSpider(SpiderTemplate):
         for table, caption in zip(tables, captions):
             maybe_bill_category = get_bill_category_or_none(caption)
             if maybe_bill_category:
-                res = SangiinSpider.scrape_bills_and_urls_from_table(table, maybe_bill_category, response.url)
+                res = self.scrape_bills_and_urls_from_table(table, maybe_bill_category, response.url)
                 bills.extend(res[0])
                 urls.extend(res[1])
         return bills, urls
 
-    @staticmethod
-    def scrape_bills_and_urls_from_table(table, bill_category, response_url):
+    def scrape_bills_and_urls_from_table(self, table, bill_category, response_url):
         bills, urls = [], []
         for row in table.xpath('./tr')[1:]:  # skip header
             cells = row.xpath('./td')
@@ -194,11 +105,131 @@ class SangiinSpider(SpiderTemplate):
             # build  URL if exists
             maybe_meisai_href = extract_full_href_or_none(cells[2], response_url)
             if maybe_meisai_href:
-                url = build_url(maybe_meisai_href, UrlTitle.GIAN_ZYOUHOU, SangiinSpider.domain)
+                url = build_url(maybe_meisai_href, UrlTitle.GIAN_ZYOUHOU, self.domain)
                 url.meta = {'bill_id': bill.id}
                 urls.append(url)
 
         return bills, urls
+
+    def scrape_bill_and_activities_from_meisai(self, response):
+
+        def set_datetimes_to_bill():
+            """
+            set 6 datetime fields in Bill if data exists
+            """
+
+            def extract_datetime_or_none(data, key):
+                try:
+                    if key in data:
+                        val = data[key].strip()
+                        if val:
+                            return DateConverter.convert(val)
+                except ValueError as e:
+                    LOGGER.warning(f'failed to parse datetime from {data[key]}: {e}')
+                return None
+
+            def set_datetime_if_exists(key, maybe_datetime):
+                if maybe_datetime:
+                    setattr(bill, key, to_neo4j_datetime(maybe_datetime))
+
+            set_datetime_if_exists(
+                'submitted_date',
+                extract_datetime_or_none(submission_data, '提出日')
+            )
+            if sangiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
+                set_datetime_if_exists(
+                    'passed_councilors_committee_date',
+                    extract_datetime_or_none(sangiin_committee_data, '議決日')
+                )
+            if sangiin_data.get('議決') in ['可決', '修正']:
+                set_datetime_if_exists(
+                    'passed_councilors_date',
+                    extract_datetime_or_none(sangiin_data, '議決日')
+                )
+            if shugiin_committee_data.get('議決・継続結果') in ['可決', '修正']:
+                set_datetime_if_exists(
+                    'passed_representatives_committee_date',
+                    extract_datetime_or_none(shugiin_committee_data, '議決日')
+                )
+            if shugiin_data.get('議決') in ['可決', '修正']:
+                set_datetime_if_exists(
+                    'passed_representatives_date',
+                    extract_datetime_or_none(shugiin_data, '議決日')
+                )
+            set_datetime_if_exists(
+                'proclaimed_date',
+                extract_datetime_or_none(proclaim_data, '公布年月日')
+            )
+
+        def set_first_house_to_bill():
+            """
+            set Bill.first_house if data exists
+            """
+
+            data, key = submission_data, '先議区分'
+            if key in data:
+                val = data[key].strip()
+                if val == '衆先議':
+                    bill.first_house = House.REPRESENTATIVES
+                elif val == '本院先議':
+                    bill.first_house = House.COUNCILORS
+
+        def extract_committee_ids():
+            """
+            extract assigned Committee IDs if data exists
+            """
+
+            def extract_committee_id_or_none(data, key, house_name):
+                if key in data:
+                    val = data[key].strip()
+                    if len(val) > 0:
+                        try:
+                            committee = self.committee_finder.find_one(house_name + val)
+                            return committee.id
+                        except Exception as e:
+                            LOGGER.warning(e)
+                return None
+
+            maybe_ids = [
+                extract_committee_id_or_none(sangiin_committee_data, '付託委員会等', '参議院'),
+                extract_committee_id_or_none(shugiin_committee_data, '付託委員会等', '衆議院')
+            ]
+            return list(filter(None, maybe_ids))
+
+        def extract_member_ids():
+            """
+            extract submitters' Member IDs if data exists
+            """
+
+            data, key = submission_data, '発議者'
+            if key in data:
+                val = data[key].strip()
+                if val:
+                    return self.member_finder.find(val)
+            return []
+
+        tables = response.xpath('//table')
+        submission_data = self.parse_meisai_table(tables[1])
+        sangiin_committee_data = self.parse_meisai_table(tables[2])
+        sangiin_data = self.parse_meisai_table(tables[3])
+        shugiin_committee_data = self.parse_meisai_table(tables[4])
+        shugiin_data = self.parse_meisai_table(tables[5])
+        proclaim_data = self.parse_meisai_table(tables[6])
+
+        bill = Bill(None)
+        bill.id = response.meta['bill_id']
+        set_datetimes_to_bill()
+        set_first_house_to_bill()
+        bill.is_passed = hasattr(bill, 'proclaimed_date') or \
+                         (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
+        bill.committee_ids = extract_committee_ids()  # to link Committee to Bill
+
+        activity_list = []
+        for member in extract_member_ids():
+            activity = build_bill_activity(member.id, bill.id, bill.submitted_date)
+            activity_list.append(activity)
+
+        return bill, activity_list
 
     @staticmethod
     def parse_meisai_table(table):
