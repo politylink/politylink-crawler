@@ -5,7 +5,7 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle
+from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity
 
 LOGGER = getLogger(__name__)
 
@@ -30,46 +30,29 @@ class MinutesSpider(SpiderTemplate):
 
     def parse(self, response):
         """
-        Minutes, URL, SpeechをGraphQLに保存する
+        Minutes, Activity, Speech, UrlをGraphQLに保存する
         """
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, url_lst, speech_lst = self.scrape_minutes_urls_speeches(response_body)
+        minutes_lst, activity_lst, speech_lst, url_lst = self.scrape_minutes_activities_speeches_urls(response_body)
 
-        self.gql_client.bulk_merge(minutes_lst + url_lst)
-        LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(url_lst)} urls')
-        if self.collect_speech:
-            self.gql_client.bulk_merge(speech_lst)
-            LOGGER.info(f'merged {len(speech_lst)} speeches')
+        self.gql_client.bulk_merge(minutes_lst + activity_lst + speech_lst + url_lst)
+        LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(activity_lst)} activities, '
+                    f'{len(speech_lst)} speeches, {len(url_lst)} urls')
 
-        from_ids, to_ids = [], []
         for minutes in minutes_lst:
-            self.link_bills_by_topics(minutes)
-            try:
-                committee = self.committee_finder.find_one(minutes.name)
-            except ValueError as e:
-                LOGGER.warning(e)
-            else:
-                from_ids.append(minutes.id)
-                to_ids.append(committee.id)
-        for url in url_lst:
-            from_ids.append(url.id)
-            to_ids.append(url.meta['minutes_id'])
-        if self.collect_speech:
-            for speech in speech_lst:
-                from_ids.append(speech.id)
-                to_ids.append(speech.minutes_id)
-        self.gql_client.bulk_link(from_ids, to_ids)
-        LOGGER.info(f'merged {len(from_ids)} relationships')
+            self.link_minutes(minutes)
+        self.link_activities(activity_lst)
+        self.link_speeches(speech_lst)
+        self.link_urls(url_lst)
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
             yield response.follow(self.build_next_url(), callback=self.parse)
 
-    @staticmethod
-    def scrape_minutes_urls_speeches(response_body):
-        minutes_lst, url_lst, speech_lst = [], [], []
+    def scrape_minutes_activities_speeches_urls(self, response_body):
+        minutes_lst, activity_lst, speech_lst, url_lst = [], [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -85,15 +68,28 @@ class MinutesSpider(SpiderTemplate):
                 continue
             minutes_lst.append(minutes)
 
-            url = build_url(meeting_rec['meetingURL'], UrlTitle.HONBUN, MinutesSpider.domain)
-            url.meta = {'minutes_id': minutes.id}
+            url = build_url(meeting_rec['meetingURL'], UrlTitle.HONBUN, self.domain)
+            url.to_id = minutes.id
             url_lst.append(url)
 
+            speakers = set()
             for speech_rec in meeting_rec['speechRecord']:
-                speech = build_speech(
-                    minutes.id,
-                    int(speech_rec['speechOrder']))
-                speech.speaker_name = speech_rec['speaker']
-                speech_lst.append(speech)
+                speaker = speech_rec['speaker']
+                speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
+                speech.speaker_name = speaker
+                if self.collect_speech:
+                    speech_lst.append(speech)
+                if speaker not in speakers:
+                    speakers.add(speaker)
+                    try:
+                        member = self.member_finder.find_one(speaker)
+                    except Exception:
+                        pass
+                    else:
+                        activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
+                        url = build_url(speech_rec['speechURL'], UrlTitle.HONBUN, self.domain)
+                        url.to_id = activity.id
+                        activity_lst.append(activity)
+                        url_lst.append(url)
 
-        return minutes_lst, url_lst, speech_lst
+        return minutes_lst, activity_lst, speech_lst, url_lst

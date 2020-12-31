@@ -58,6 +58,42 @@ class SpiderTemplate(scrapy.Spider):
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
+    def link_minutes(self, minutes):
+        """
+        link Minutes to Bill, Committee and Member
+        """
+
+        self.link_bills_by_topics(minutes)
+
+        try:
+            committee = self.committee_finder.find_one(minutes.name)
+        except ValueError as e:
+            LOGGER.warning(e)
+        else:
+            self.gql_client.link(minutes.id, committee.id)
+
+        if hasattr(minutes, 'speakers'):
+            from_ids = []
+            to_ids = []
+            for speaker in minutes.speakers:
+                try:
+                    member = self.member_finder.find_one(speaker)
+                except ValueError as e:
+                    LOGGER.debug(e)  # this is expected when speaker is not member
+                else:
+                    from_ids.append(member.id)
+                    to_ids.append(minutes.id)
+            if from_ids:
+                self.gql_client.bulk_link(from_ids, to_ids)
+
+    def link_speeches(self, speeches):
+        from_ids, to_ids = [], []
+        for speech in speeches:
+            from_ids.append(speech.id)
+            to_ids.append(speech.minutes_id)
+        if from_ids:
+            self.gql_client.bulk_link(from_ids, to_ids)
+
     def store_urls_for_bill(self, urls, bill_query):
         if not urls:
             return
@@ -144,35 +180,6 @@ class ManualSpiderTemplate(SpiderTemplate):
 
 
 class TvSpiderTemplate(SpiderTemplate):
-
-    def link_minutes(self, minutes):
-        """
-        link Minutes to Bill, Committee and Member
-        """
-
-        self.link_bills_by_topics(minutes)
-
-        try:
-            committee = self.committee_finder.find_one(minutes.name)
-        except ValueError as e:
-            LOGGER.warning(e)
-        else:
-            self.gql_client.link(minutes.id, committee.id)
-
-        if hasattr(minutes, 'speakers'):
-            from_ids = []
-            to_ids = []
-            for speaker in minutes.speakers:
-                try:
-                    member = self.member_finder.find_one(speaker)
-                except ValueError as e:
-                    LOGGER.debug(e)  # this is expected when speaker is not member
-                else:
-                    from_ids.append(member.id)
-                    to_ids.append(minutes.id)
-            if from_ids:
-                self.gql_client.bulk_link(from_ids, to_ids)
-                LOGGER.info(f'linked {len(from_ids)} members')
 
     def build_activities_and_urls(self, atags, minutes, response_url):
         """
