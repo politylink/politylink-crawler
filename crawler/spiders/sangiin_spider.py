@@ -51,12 +51,12 @@ class SangiinSpider(SpiderTemplate):
         """
 
         bill, activities = self.scrape_bill_and_activities_from_meisai(response)
-        LOGGER.debug(bill)
-        LOGGER.debug(activities)
         self.gql_client.bulk_merge([bill] + activities)
-        LOGGER.info(f'merged 1 bill and {len(activities)} activities')
+        LOGGER.info(f'merged 1 Bill and {len(activities)} Activity')
+        LOGGER.debug(f'Bill={bill}, Activity={activities}')
         if bill.committee_ids:
             self.gql_client.bulk_link([bill.id] * len(bill.committee_ids), bill.committee_ids)
+            LOGGER.debug(f'linked {bill.id} to {bill.committee_ids}')
         self.link_activities(activities)
 
     def scrape_bills_and_urls(self, response):
