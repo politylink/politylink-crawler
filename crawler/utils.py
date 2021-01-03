@@ -232,7 +232,7 @@ def parse_name_str(name_str):
     pattern = r'([^（）]+)（([^（）]+)）'
     if not re.fullmatch(pattern, name_str):
         raise ValueError(f'invalid name_str="{name_str}"')
-    parts = re.split('[ |　|（|）]', name_str.strip())
+    parts = re.split('[ |　|（|）]', name_str)
     if len(parts) == 3:
         return parts[0], '', parts[1], ''
     elif len(parts) == 5:
