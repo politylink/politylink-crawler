@@ -23,6 +23,7 @@ class UrlTitle(str, Enum):
     SHINGI_TYUKEI = '審議中継'
     PUBLIC_COMMENT = 'パブリックコメント'
     GIIN_ZYOUHOU = '議員情報'
+    VRSDD = '国会審議映像検索システム'
 
 
 class BillCategory(str, Enum):
