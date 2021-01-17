@@ -4,8 +4,7 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import NewsSpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, extract_thumbnail_or_none, \
-    extract_full_href_list
+from crawler.utils import build_news, to_neo4j_datetime, strip_join, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -38,24 +37,16 @@ class NikkeiSpider(NewsSpiderTemplate):
             yield response.follow(self.build_next_url(), self.parse)
 
     def scrape_news_and_text(self, response):
-        maybe_json_ld = extract_json_ld_or_none(response)
         title = strip_join(response.css('h1.title_tyodebu').xpath('.//text()').getall(), sep=' ')
         body = strip_join(response.css('section.container_cz8tiun').xpath('.//p/text()').getall())
 
         news = build_news(response.url, self.publisher)
         news.title = title
         news.is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
-        if maybe_json_ld:
-            json_ld = maybe_json_ld
-            maybe_thumbnail = extract_thumbnail_or_none(json_ld)
-            if maybe_thumbnail:
-                news.thumbnail = maybe_thumbnail
-            news.published_at = self.to_datetime(json_ld['datePublished'])
-            news.last_modified_at = self.to_datetime(json_ld['dateModified'])
-        else:
-            maybe_published_at_str = response.css('div.TimeStamp_t165nkxq').xpath('.//time/@datetime').get()
-            if maybe_published_at_str:
-                news.published_at = self.to_datetime2(maybe_published_at_str)
+
+        maybe_published_at_str = response.css('div.TimeStamp_t165nkxq').xpath('.//time/@datetime').get()
+        if maybe_published_at_str:
+            news.published_at = self.to_datetime2(maybe_published_at_str)
 
         news_text = NewsText({'id': news.id})
         news_text.title = title
