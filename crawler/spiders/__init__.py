@@ -130,6 +130,10 @@ class SpiderTemplate(scrapy.Spider):
             self.gql_client.bulk_link(from_ids, to_ids)
             LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
 
+    def get_latest_diet(self):
+        diets = sorted(self.gql_client.get_all_diets(['id', 'number']), key=lambda x: x.number)
+        return diets[-1]
+
 
 class TableSpiderTemplate(SpiderTemplate):
     table_idx = NotImplemented
