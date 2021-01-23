@@ -11,9 +11,9 @@ poetry install
 
 ### Run
 ```shell script
-poetry run scrapy crawl shugiin -a diet=203
-poetry run scrapy crawl sangiin -a diet=203
-poetry run scrapy crawl shugiin_minutes -a diet=203
+poetry run scrapy crawl shugiin
+poetry run scrapy crawl sangiin
+poetry run scrapy crawl shugiin_minutes
 poetry run scrapy crawl minutes -a start_date=2020-12-01 -a end_date=2020-12-08 -a speech=false
 poetry run scrapy crawl shugiin_tv -a start_date=2020-12-01 -a end_date=2020-12-08
 poetry run scrapy crawl mainichi -a limit=5

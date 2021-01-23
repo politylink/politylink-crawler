@@ -3,7 +3,7 @@ from datetime import datetime
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_full_href_or_none, extract_text, build_url, UrlTitle, build_minutes
+from crawler.utils import extract_full_href_or_none, extract_text, build_url, UrlTitle, build_minutes, build_diet
 from politylink.graphql.client import GraphQLException
 from politylink.graphql.schema import Committee
 
@@ -16,12 +16,13 @@ class ShugiinMinutesSpider(SpiderTemplate):
 
     def __init__(self, diet=None, *args, **kwargs):
         super(ShugiinMinutesSpider, self).__init__(*args, **kwargs)
-        self.start_urls = [self.build_start_url(diet)]
+        diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.start_urls = [self.build_start_url(diet.number)]
 
     @staticmethod
-    def build_start_url(diet=None):
+    def build_start_url(diet_number):
         template = 'http://www.shugiin.go.jp/internet/itdb_rchome.nsf/html/rchome/IinkaiNews{}_m.htm'
-        return template.format(diet) if diet else template.format('')
+        return template.format(diet_number)
 
     def parse(self, response):
         LOGGER.info(f'got response from {response.url}')
