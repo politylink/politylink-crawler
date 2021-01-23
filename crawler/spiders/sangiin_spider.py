@@ -13,9 +13,9 @@ class SangiinSpider(SpiderTemplate):
     name = 'sangiin'
     domain = 'sangiin.go.jp'
 
-    def __init__(self, diet, *args, **kwargs):
+    def __init__(self, diet=None, *args, **kwargs):
         super(SangiinSpider, self).__init__(*args, **kwargs)
-        self.diet = build_diet(diet)
+        self.diet = build_diet(diet) if diet else self.get_latest_diet()
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
