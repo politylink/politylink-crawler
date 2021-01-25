@@ -1,5 +1,4 @@
 from crawler.spiders import TableSpiderTemplate, ManualSpiderTemplate
-from crawler.utils import UrlTitle
 
 
 class SoumuSpider(TableSpiderTemplate, ManualSpiderTemplate):
@@ -11,21 +10,6 @@ class SoumuSpider(TableSpiderTemplate, ManualSpiderTemplate):
     bill_col = 1
     url_col = 2
 
-    items = [
-        {'title': UrlTitle.GAIYOU_PDF,
-         'bill': '第201回国会閣法第55号',
-         'url': 'https://www.soumu.go.jp/main_content/000685039.pdf'},
-        {'title': UrlTitle.SINKYU_PDF,
-         'bill': '第201回国会閣法第55号',
-         'url': 'https://www.soumu.go.jp/main_content/000685043.pdf'},
-        {'title': UrlTitle.GAIYOU_PDF,
-         'bill': '第201回国会閣法第6号',
-         'url': 'https://www.soumu.go.jp/main_content/000667524.pdf'},
-        {'title': UrlTitle.SINKYU_PDF,
-         'bill': '第201回国会閣法第6号',
-         'url': 'https://www.soumu.go.jp/main_content/000667527.pdf'},
-    ]
-
-    def parse(self, response):
-        self.parse_table(response)
-        self.parse_items()
+    @staticmethod
+    def build_start_url(diet_number):
+        return 'https://www.soumu.go.jp/menu_hourei/k_houan.html'

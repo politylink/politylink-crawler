@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
-    build_minutes_activity
+    build_minutes_activity, build_diet
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
@@ -94,11 +94,11 @@ class SpiderTemplate(scrapy.Spider):
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
-    def store_urls_for_bill(self, urls, bill_query):
+    def store_urls_for_bill(self, urls, bill_query, diet_number=None):
         if not urls:
             return
         try:
-            bill = self.bill_finder.find_one(bill_query)
+            bill = self.bill_finder.find_one(bill_query, diet_number)
         except ValueError as e:
             LOGGER.warning(e)
         else:
@@ -141,17 +141,17 @@ class TableSpiderTemplate(SpiderTemplate):
     url_col = NotImplemented
 
     def parse(self, response):
-        self.parse_table(response)
-
-    def parse_table(self, response):
         table = response.xpath('//table')[self.table_idx]
+        self.parse_table(table)
+
+    def parse_table(self, table, diet_number=None):
         for row in table.xpath('.//tr'):
             cells = row.xpath('.//td')
             if len(cells) > max(self.bill_col, self.url_col):
                 try:
                     bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
-                    self.store_urls_for_bill(urls, bill_query)
+                    self.store_urls_for_bill(urls, bill_query, diet_number)
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
@@ -167,6 +167,21 @@ class TableSpiderTemplate(SpiderTemplate):
             elif '新旧' in text:
                 urls.append(build_url(href, UrlTitle.SINKYU_PDF, self.domain))
         return urls
+
+
+class DietTableSpiderTemplate(TableSpiderTemplate):
+    def __init__(self, diet=None, *args, **kwargs):
+        super(DietTableSpiderTemplate, self).__init__(*args, **kwargs)
+        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.start_urls = [self.build_start_url(self.diet.number)]
+
+    def parse(self, response):
+        table = response.xpath('//table')[self.table_idx]
+        self.parse_table(table, self.diet.number)
+
+    @staticmethod
+    def build_start_url(diet_number):
+        NotImplemented
 
 
 class ManualSpiderTemplate(SpiderTemplate):
