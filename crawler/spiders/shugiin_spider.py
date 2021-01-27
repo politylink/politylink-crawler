@@ -39,10 +39,10 @@ class ShugiinSpider(SpiderTemplate):
             self.gql_client.link(url.id, bill_id)
         LOGGER.info(f'merged {len(urls)} urls')
 
-        # for url in urls:
-        #     assert isinstance(url, Url)
-        #     if url.title == UrlTitle.HONBUN:
-        #         yield response.follow(url.url, callback=self.parse_honbun, meta=url.meta)
+        for url in urls:
+            assert isinstance(url, Url)
+            if url.title == UrlTitle.HONBUN:
+                yield response.follow(url.url, callback=self.parse_honbun, meta=url.meta)
 
     def parse_honbun(self, response):
         """

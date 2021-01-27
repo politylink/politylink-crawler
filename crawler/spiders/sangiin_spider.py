@@ -40,10 +40,10 @@ class SangiinSpider(SpiderTemplate):
             self.gql_client.link(url.id, bill_id)
         LOGGER.info(f'merged {len(urls)} urls')
 
-        # for url in urls:
-        #     assert isinstance(url, Url)
-        #     if url.title == UrlTitle.GIAN_ZYOUHOU:
-        #         yield response.follow(url.url, callback=self.parse_meisai, meta=url.meta)
+        for url in urls:
+            assert isinstance(url, Url)
+            if url.title == UrlTitle.GIAN_ZYOUHOU:
+                yield response.follow(url.url, callback=self.parse_meisai, meta=url.meta)
 
     def parse_meisai(self, response):
         """
