@@ -94,17 +94,6 @@ class SpiderTemplate(scrapy.Spider):
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
-    def store_urls_for_bill(self, urls, bill_query, diet_number=None):
-        if not urls:
-            return
-        try:
-            bill = self.bill_finder.find_one(bill_query, diet_number)
-        except ValueError as e:
-            LOGGER.warning(e)
-        else:
-            self.gql_client.bulk_merge(urls)
-            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
-
     def delete_old_urls(self, src_id, url_title):
         obj = self.gql_client.get(src_id)
         for url in obj.urls:
@@ -139,6 +128,7 @@ class TableSpiderTemplate(SpiderTemplate):
     table_idx = NotImplemented
     bill_col = NotImplemented
     url_col = NotImplemented
+    bill_category = None
 
     def parse(self, response):
         table = response.xpath('//table')[self.table_idx]
@@ -151,8 +141,8 @@ class TableSpiderTemplate(SpiderTemplate):
                 try:
                     bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
-                    self.store_urls_for_bill(urls, bill_query, diet_number)
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
+                    self.store_urls_for_bill(urls, bill_query, diet_number)
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
                     continue
@@ -168,6 +158,18 @@ class TableSpiderTemplate(SpiderTemplate):
                 urls.append(build_url(href, UrlTitle.SINKYU_PDF, self.domain))
         return urls
 
+    def store_urls_for_bill(self, urls, bill_query, diet_number=None):
+        if not urls:
+            return
+        try:
+            bill = self.bill_finder.find_one(bill_query, diet_number=diet_number, category=self.bill_category)
+        except ValueError as e:
+            LOGGER.warning(e)
+        else:
+            self.gql_client.bulk_merge(urls)
+            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
+            LOGGER.info(f'linked {len(urls)} urls to {bill.bill_number}')
+
 
 class DietTableSpiderTemplate(TableSpiderTemplate):
     def __init__(self, diet=None, *args, **kwargs):
@@ -182,20 +184,6 @@ class DietTableSpiderTemplate(TableSpiderTemplate):
     @staticmethod
     def build_start_url(diet_number):
         NotImplemented
-
-
-class ManualSpiderTemplate(SpiderTemplate):
-    items = []
-
-    def parse(self, response):
-        self.parse_items()
-
-    def parse_items(self):
-        for item in self.items:
-            bill_query = item['bill']
-            urls = [build_url(item['url'], item['title'], self.domain)]
-            self.store_urls_for_bill(urls, bill_query)
-        LOGGER.info(f'merged {len(self.items)} urls')
 
 
 class TvSpiderTemplate(SpiderTemplate):

@@ -4,6 +4,7 @@ from crawler.spiders import DietTableSpiderTemplate
 class SanhouSpider(DietTableSpiderTemplate):
     name = 'sanhou'  # 参議院法制局
     domain = 'sangiin.go.jp'
+    bill_category = 'SANHOU'
 
     table_idx = 1
     bill_col = 1

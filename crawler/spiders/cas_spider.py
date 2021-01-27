@@ -4,6 +4,7 @@ from crawler.spiders import DietTableSpiderTemplate
 class CasSpider(DietTableSpiderTemplate):
     name = 'cas'  # 内閣官房
     domain = 'cas.go.jp'
+    bill_category = 'KAKUHOU'
 
     table_idx = 1
     bill_col = 0
