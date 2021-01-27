@@ -1,17 +1,13 @@
-from crawler.spiders import ManualSpiderTemplate
-from crawler.utils import UrlTitle
+from crawler.spiders import TableSpiderTemplate
 
 
-class CaaSpider(ManualSpiderTemplate):
+class CaoSpider(TableSpiderTemplate):
     name = 'caa'  # 消費者庁
     domain = 'caa.go.jp'
-    start_urls = ['https://www.caa.go.jp/law/bills/']
+    bill_category = 'KAKUHOU'
 
-    items = [
-        {'title': UrlTitle.GAIYOU_PDF,
-         'bill': '公益通報者保護法の一部を改正する法律案',
-         'url': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_01.pdf'},
-        {'title': UrlTitle.SINKYU_PDF,
-         'bill': '公益通報者保護法の一部を改正する法律案',
-         'url': 'https://www.caa.go.jp/law/bills/pdf/consumer_system_cms101_200306_04.pdf'},
-    ]
+    table_idx = 0
+    bill_col = 1
+    url_col = 2
+
+    start_urls = ['https://www.caa.go.jp/law/bills/']

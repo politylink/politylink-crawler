@@ -1,25 +1,15 @@
-from crawler.spiders import TableSpiderTemplate, ManualSpiderTemplate
-from crawler.utils import UrlTitle
+from crawler.spiders import DietTableSpiderTemplate
 
 
-class CasSpider(TableSpiderTemplate, ManualSpiderTemplate):
+class CasSpider(DietTableSpiderTemplate):
     name = 'cas'  # 内閣官房
     domain = 'cas.go.jp'
-    start_urls = ['http://www.cas.go.jp/jp/houan/203.html']
+    bill_category = 'KAKUHOU'
 
     table_idx = 1
     bill_col = 0
     url_col = 3
 
-    items = [
-        {'title': UrlTitle.GAIYOU_PDF,
-         'bill': '第201回国会閣法第52号',
-         'url': 'http://www.cas.go.jp/jp/houan/200313/siryou1.pdf'},
-        {'title': UrlTitle.SINKYU_PDF,
-         'bill': '第201回国会閣法第52号',
-         'url': 'http://www.cas.go.jp/jp/houan/200313/siryou4.pdf'},
-    ]
-
-    def parse(self, response):
-        self.parse_table(response)
-        self.parse_items()
+    @staticmethod
+    def build_start_url(diet_number):
+        return f'http://www.cas.go.jp/jp/houan/{diet_number}.html'

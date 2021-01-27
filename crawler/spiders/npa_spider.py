@@ -1,17 +1,13 @@
-from crawler.spiders import ManualSpiderTemplate
-from crawler.utils import UrlTitle
+from crawler.spiders import TableSpiderTemplate
 
 
-class NpaSpider(ManualSpiderTemplate):
+class NpaSpider(TableSpiderTemplate):
     name = 'npa'  # 警察庁
     domain = 'npa.go.jp'
-    start_urls = ['https://www.npa.go.jp/laws/kokkai/index.html']
+    bill_category = 'KAKUHOU'
 
-    items = [
-        {'title': UrlTitle.GAIYOU_PDF,
-         'bill': '道路交通法の一部を改正する法律案',
-         'url': 'https://www.npa.go.jp/laws/kokkai/200303/gaiyou.pdf'},
-        {'title': UrlTitle.SINKYU_PDF,
-         'bill': '道路交通法の一部を改正する法律案',
-         'url': 'https://www.npa.go.jp/laws/kokkai/200303/sinkyu.pdf'},
-    ]
+    table_idx = 0
+    bill_col = 1
+    url_col = 2
+
+    start_urls = ['https://www.npa.go.jp/laws/kokkai/index.html']

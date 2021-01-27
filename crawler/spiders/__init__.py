@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
-    build_minutes_activity
+    build_minutes_activity, build_diet
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
@@ -94,17 +94,6 @@ class SpiderTemplate(scrapy.Spider):
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
-    def store_urls_for_bill(self, urls, bill_query):
-        if not urls:
-            return
-        try:
-            bill = self.bill_finder.find_one(bill_query)
-        except ValueError as e:
-            LOGGER.warning(e)
-        else:
-            self.gql_client.bulk_merge(urls)
-            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
-
     def delete_old_urls(self, src_id, url_title):
         obj = self.gql_client.get(src_id)
         for url in obj.urls:
@@ -139,20 +128,21 @@ class TableSpiderTemplate(SpiderTemplate):
     table_idx = NotImplemented
     bill_col = NotImplemented
     url_col = NotImplemented
+    bill_category = None
 
     def parse(self, response):
-        self.parse_table(response)
-
-    def parse_table(self, response):
         table = response.xpath('//table')[self.table_idx]
+        self.parse_table(table)
+
+    def parse_table(self, table, diet_number=None):
         for row in table.xpath('.//tr'):
             cells = row.xpath('.//td')
             if len(cells) > max(self.bill_col, self.url_col):
                 try:
                     bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
-                    self.store_urls_for_bill(urls, bill_query)
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
+                    self.store_urls_for_bill(urls, bill_query, diet_number)
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
                     continue
@@ -168,19 +158,32 @@ class TableSpiderTemplate(SpiderTemplate):
                 urls.append(build_url(href, UrlTitle.SINKYU_PDF, self.domain))
         return urls
 
+    def store_urls_for_bill(self, urls, bill_query, diet_number=None):
+        if not urls:
+            return
+        try:
+            bill = self.bill_finder.find_one(bill_query, diet_number=diet_number, category=self.bill_category)
+        except ValueError as e:
+            LOGGER.warning(e)
+        else:
+            self.gql_client.bulk_merge(urls)
+            self.gql_client.bulk_link(map(lambda x: x.id, urls), [bill.id] * len(urls))
+            LOGGER.info(f'linked {len(urls)} urls to {bill.bill_number}')
 
-class ManualSpiderTemplate(SpiderTemplate):
-    items = []
+
+class DietTableSpiderTemplate(TableSpiderTemplate):
+    def __init__(self, diet=None, *args, **kwargs):
+        super(DietTableSpiderTemplate, self).__init__(*args, **kwargs)
+        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.start_urls = [self.build_start_url(self.diet.number)]
 
     def parse(self, response):
-        self.parse_items()
+        table = response.xpath('//table')[self.table_idx]
+        self.parse_table(table, self.diet.number)
 
-    def parse_items(self):
-        for item in self.items:
-            bill_query = item['bill']
-            urls = [build_url(item['url'], item['title'], self.domain)]
-            self.store_urls_for_bill(urls, bill_query)
-        LOGGER.info(f'merged {len(self.items)} urls')
+    @staticmethod
+    def build_start_url(diet_number):
+        NotImplemented
 
 
 class TvSpiderTemplate(SpiderTemplate):

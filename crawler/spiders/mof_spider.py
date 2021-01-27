@@ -1,37 +1,15 @@
-from crawler.spiders import TableSpiderTemplate, ManualSpiderTemplate
-from crawler.utils import UrlTitle
+from crawler.spiders import DietTableSpiderTemplate
 
 
-class MofSpider(TableSpiderTemplate, ManualSpiderTemplate):
+class MofSpider(DietTableSpiderTemplate):
     name = 'mof'  # 財務省
     domain = 'mof.go.jp'
-    start_urls = ['https://www.mof.go.jp/about_mof/bills/201diet/index.htm']
+    bill_category = 'KAKUHOU'
 
     table_idx = 0
     bill_col = 1
     url_col = 2
 
-    items = [
-        {'title': UrlTitle.GAIYOU,
-         'bill': '新型コロナウイルス感染症等の影響に対応するための国税関係法律の臨時特例に関する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/kz020427g.html'},
-        {'title': UrlTitle.GAIYOU,
-         'bill': '株式会社日本政策投資銀行法の一部を改正する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/20200225g.htm'},
-        {'title': UrlTitle.GAIYOU,
-         'bill': '国際金融公社への加盟に伴う措置に関する法律及び国際開発協会への加盟に伴う措置に関する法律の一部を改正する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/in20200204g.htm'},
-        {'title': UrlTitle.GAIYOU,
-         'bill': '関税定率法等の一部を改正する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/ka20200204g.htm'},
-        {'title': UrlTitle.GAIYOU,
-         'bill': '所得税法等の一部を改正する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/st020131g.htm'},
-        {'title': UrlTitle.GAIYOU,
-         'bill': '平成三十年度歳入歳出の決算上の剰余金の処理の特例に関する法律案',
-         'url': 'https://www.mof.go.jp/about_mof/bills/201diet/zk20200120g.htm'},
-    ]
-
-    def parse(self, response):
-        self.parse_table(response)
-        self.parse_items()
+    @staticmethod
+    def build_start_url(diet_number):
+        return f'https://www.mof.go.jp/about_mof/bills/{diet_number}diet/index.htm'
