@@ -2,7 +2,7 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
-    BillCategory, build_diet, build_bill_activity
+    BillCategory, build_bill_activity
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -15,7 +15,7 @@ class SangiinSpider(SpiderTemplate):
 
     def __init__(self, diet=None, *args, **kwargs):
         super(SangiinSpider, self).__init__(*args, **kwargs)
-        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.diet = self.get_diet(diet)
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod

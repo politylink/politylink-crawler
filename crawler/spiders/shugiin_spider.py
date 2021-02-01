@@ -1,8 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
-    build_diet
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -14,7 +13,7 @@ class ShugiinSpider(SpiderTemplate):
 
     def __init__(self, diet=None, *args, **kwargs):
         super(ShugiinSpider, self).__init__(*args, **kwargs)
-        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.diet = self.get_diet(diet)
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
