@@ -2,7 +2,7 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
-    BillCategory, build_diet, build_bill_activity
+    BillCategory, build_bill_activity
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 

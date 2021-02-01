@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
-    build_minutes_activity, build_diet
+    build_minutes_activity
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient

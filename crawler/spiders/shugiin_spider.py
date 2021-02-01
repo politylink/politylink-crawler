@@ -1,8 +1,7 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
-    build_diet
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
