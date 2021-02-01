@@ -14,7 +14,7 @@ class ShugiinSpider(SpiderTemplate):
 
     def __init__(self, diet=None, *args, **kwargs):
         super(ShugiinSpider, self).__init__(*args, **kwargs)
-        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.diet = self.get_diet(diet)
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod

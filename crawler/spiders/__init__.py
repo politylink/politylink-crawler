@@ -119,8 +119,14 @@ class SpiderTemplate(scrapy.Spider):
             self.gql_client.bulk_link(from_ids, to_ids)
             LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
 
+    def get_diet(self, diet_number=None):
+        if diet_number:
+            return self.gql_client.get(f'Diet:{diet_number}', ['id', 'number', 'start_date'])
+        else:
+            return self.get_latest_diet()
+
     def get_latest_diet(self):
-        diets = sorted(self.gql_client.get_all_diets(['id', 'number']), key=lambda x: x.number)
+        diets = sorted(self.gql_client.get_all_diets(['id', 'number', 'start_date']), key=lambda x: x.number)
         return diets[-1]
 
 
@@ -174,7 +180,7 @@ class TableSpiderTemplate(SpiderTemplate):
 class DietTableSpiderTemplate(TableSpiderTemplate):
     def __init__(self, diet=None, *args, **kwargs):
         super(DietTableSpiderTemplate, self).__init__(*args, **kwargs)
-        self.diet = build_diet(diet) if diet else self.get_latest_diet()
+        self.diet = self.get_diet(diet)
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     def parse(self, response):

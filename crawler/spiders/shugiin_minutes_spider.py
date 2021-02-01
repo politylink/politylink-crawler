@@ -3,7 +3,7 @@ from datetime import datetime
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_full_href_or_none, extract_text, build_url, UrlTitle, build_minutes, build_diet
+from crawler.utils import extract_full_href_or_none, extract_text, build_url, UrlTitle, build_minutes
 from politylink.graphql.client import GraphQLException
 from politylink.graphql.schema import Committee
 
@@ -16,8 +16,8 @@ class ShugiinMinutesSpider(SpiderTemplate):
 
     def __init__(self, diet=None, *args, **kwargs):
         super(ShugiinMinutesSpider, self).__init__(*args, **kwargs)
-        diet = build_diet(diet) if diet else self.get_latest_diet()
-        self.start_urls = [self.build_start_url(diet.number)]
+        self.diet = self.get_diet(diet)
+        self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
     def build_start_url(diet_number):
@@ -63,7 +63,7 @@ class ShugiinMinutesSpider(SpiderTemplate):
         # link to minutes
         title = extract_text(response.xpath('//title'))
         committee_name = response.meta['committee_name']
-        date_time = self.extract_datetime_from_title(title)
+        date_time = self.extract_datetime_from_title(title, self.diet.start_date.year)
         minutes = build_minutes(committee_name, date_time)
         try:
             self.gql_client.get(minutes.id, ['id'])  # minutes should already exist
@@ -72,13 +72,12 @@ class ShugiinMinutesSpider(SpiderTemplate):
             LOGGER.warning(f'failed to find minutes ({committee_name}, {date_time})')
 
     @staticmethod
-    def extract_datetime_from_title(title):
+    def extract_datetime_from_title(title, year):
         pattern = r'第(.*)回国会(.*)月(.*)日'
         match = re.search(pattern, title)
         if not match:
             raise ValueError(f'failed to extract datetime from {title}')
-        # ToDo: properly handle year (POL-154)
-        return datetime(year=2020, month=int(match.group(2)), day=int(match.group(3)))
+        return datetime(year=year, month=int(match.group(2)), day=int(match.group(3)))
 
     @staticmethod
     def scrape_committees_from_table(table, root_url):
