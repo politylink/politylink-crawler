@@ -43,6 +43,7 @@ class MinutesSpider(SpiderTemplate):
 
         for minutes in minutes_lst:
             self.link_minutes(minutes)
+            self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
         self.link_activities(activity_lst)
         self.link_speeches(speech_lst)
         self.link_urls(url_lst)
