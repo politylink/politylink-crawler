@@ -82,7 +82,7 @@ class SangiinTvSpider(TvSpiderTemplate):
             if term == '開会日':
                 date_time = datetime.strptime(desc, '%Y年%m月%d日')
             elif term == '会議名':
-                meeting_name = desc
+                meeting_name = desc.replace('、', '')
         if not (date_time and meeting_name):
             msg = f'failed to extract minutes detail: date_time={date_time}, meeting_name={meeting_name}'
             raise ValueError(msg)
