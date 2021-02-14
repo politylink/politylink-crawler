@@ -95,7 +95,7 @@ class SpiderTemplate(scrapy.Spider):
             self.gql_client.bulk_link(from_ids, to_ids)
 
     def delete_old_urls(self, src_id, url_title):
-        obj = self.gql_client.get(src_id)
+        obj = self.gql_client.get(src_id, fields=['urls'])
         for url in obj.urls:
             if url.title == url_title:
                 self.gql_client.delete(url.id)

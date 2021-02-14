@@ -37,15 +37,15 @@ class MinutesSpider(SpiderTemplate):
         response_body = json.loads(response.body)
         minutes_lst, activity_lst, speech_lst, url_lst = self.scrape_minutes_activities_speeches_urls(response_body)
 
+        self.gql_client.bulk_merge(minutes_lst)
+        LOGGER.info(f'merged {len(minutes_lst)} minutes')
         for minutes in minutes_lst:
             self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
-
-        self.gql_client.bulk_merge(minutes_lst + activity_lst + speech_lst + url_lst)
-        LOGGER.info(f'merged {len(minutes_lst)} minutes, {len(activity_lst)} activities, '
-                    f'{len(speech_lst)} speeches, {len(url_lst)} urls')
-
-        for minutes in minutes_lst:
             self.link_minutes(minutes)
+
+        self.gql_client.bulk_merge(activity_lst + speech_lst + url_lst)
+        LOGGER.info(f'merged {len(activity_lst)} activities, {len(speech_lst)} speeches, {len(url_lst)} urls')
+
         self.link_activities(activity_lst)
         self.link_speeches(speech_lst)
         self.link_urls(url_lst)
