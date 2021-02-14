@@ -4,7 +4,8 @@ from crawler.spiders import TableSpiderTemplate
 class SoumuSpider(TableSpiderTemplate):
     name = 'soumu'  # 総務省
     domain = 'soumu.go.jp'
-    bill_category = 'SOUMU'
+    bill_category = 'KAKUHOU'
+    diet_number = 204
 
     table_idx = 0
     bill_col = 1

@@ -135,12 +135,13 @@ class TableSpiderTemplate(SpiderTemplate):
     bill_col = NotImplemented
     url_col = NotImplemented
     bill_category = None
+    diet_number = None
 
     def parse(self, response):
         table = response.xpath('//table')[self.table_idx]
-        self.parse_table(table)
+        self.parse_table(table, self.bill_category, self.diet_number)
 
-    def parse_table(self, table, diet_number=None):
+    def parse_table(self, table, bill_category=None, diet_number=None):
         for row in table.xpath('.//tr'):
             cells = row.xpath('.//td')
             if len(cells) > max(self.bill_col, self.url_col):
@@ -148,7 +149,7 @@ class TableSpiderTemplate(SpiderTemplate):
                     bill_query = extract_text(cells[self.bill_col]).strip()
                     urls = self.extract_urls(cells[self.url_col])
                     LOGGER.info(f'scraped {len(urls)} urls for {bill_query}')
-                    self.store_urls_for_bill(urls, bill_query, diet_number)
+                    self.store_urls_for_bill(urls, bill_query, bill_category, diet_number)
                 except Exception as e:
                     LOGGER.warning(f'failed to parse {row}: {e}')
                     continue
@@ -164,11 +165,16 @@ class TableSpiderTemplate(SpiderTemplate):
                 urls.append(build_url(href, UrlTitle.SINKYU_PDF, self.domain))
         return urls
 
-    def store_urls_for_bill(self, urls, bill_query, diet_number=None):
+    def store_urls_for_bill(self, urls, bill_query, bill_category=None, diet_number=None):
         if not urls:
             return
+        kwargs = dict()
+        if bill_category:
+            kwargs['category'] = bill_category
+        if diet_number:
+            kwargs['diet_number'] = diet_number
         try:
-            bill = self.bill_finder.find_one(bill_query, diet_number=diet_number, category=self.bill_category)
+            bill = self.bill_finder.find_one(bill_query, **kwargs)
         except ValueError as e:
             LOGGER.warning(e)
         else:
@@ -185,7 +191,7 @@ class DietTableSpiderTemplate(TableSpiderTemplate):
 
     def parse(self, response):
         table = response.xpath('//table')[self.table_idx]
-        self.parse_table(table, self.diet.number)
+        self.parse_table(table, self.bill_category, self.diet.number)
 
     @staticmethod
     def build_start_url(diet_number):
