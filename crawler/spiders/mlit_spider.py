@@ -5,6 +5,7 @@ class MlitSpider(TableSpiderTemplate):
     name = 'mlit'  # 国土交通省
     domain = 'mlit.go.jp'
     bill_category = 'KAKUHOU'
+    diet_number = 204
 
     table_idx = 0
     bill_col = 1
