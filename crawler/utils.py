@@ -240,3 +240,12 @@ def parse_name_str(name_str):
         return parts[1], parts[0], parts[3], parts[2]
     else:
         raise ValueError(f'invalid split result: name_str={name_str}, parts={parts}')
+
+
+def extract_bill_number_or_none(text):
+    pattern = r'第?([0-9]+)回?(国会)?(閣|衆|参|)法?第?([0-9]+)号?'
+    match = re.search(pattern, text)
+    if not match:
+        return None
+    bill_number = '第{}回国会{}法第{}号'.format(match.group(1), match.group(3), match.group(4))
+    return bill_number
