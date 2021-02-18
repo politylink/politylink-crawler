@@ -1,8 +1,6 @@
 from datetime import datetime
 from logging import getLogger
 
-import scrapy
-
 from crawler.spiders import NewsSpiderTemplate
 from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, \
     extract_thumbnail_or_none, extract_full_href_list
@@ -14,30 +12,17 @@ LOGGER = getLogger(__name__)
 class MainichiSpider(NewsSpiderTemplate):
     name = 'mainichi'
     publisher = '毎日新聞'
+    start_urls = ['https://mainichi.jp/seiji/']
 
-    def __init__(self, limit, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(MainichiSpider, self).__init__(*args, **kwargs)
-        self.limit = int(limit)
-        self.news_count = 0
-        self.next_page = 0
-
-    def build_next_url(self):
-        self.next_page += 1
-        return f'https://mainichi.jp/seiji/{self.next_page}'
-
-    def start_requests(self):
-        yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        news_url_list = extract_full_href_list(
-            response.xpath('//section[@class="newslist"]').css('ul.list-typeA').xpath('./li'), response.url)
+        news_url_list = extract_full_href_list(response.xpath('//section[@id="article-list"]//li'), response.url)
         LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             if 'premier' not in news_url:  # ToDo: process premier article
                 yield response.follow(news_url, callback=self.parse_news)
-        self.news_count += len(news_url_list)
-        if self.news_count < self.limit:
-            yield response.follow(self.build_next_url(), self.parse)
 
     def scrape_news_and_text(self, response):
         maybe_json_ld = extract_json_ld_or_none(response)
