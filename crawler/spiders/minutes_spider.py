@@ -14,11 +14,12 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, speech='false', *args, **kwargs):
+    def __init__(self, start_date, end_date, speech='false', overwrite='false', *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
         self.end_date = end_date
         self.collect_speech = speech == 'true'
+        self.overwrite_url = overwrite == 'true'
         self.next_pos = 1
 
     def build_next_url(self):
@@ -40,13 +41,19 @@ class MinutesSpider(SpiderTemplate):
         self.gql_client.bulk_merge(minutes_lst)
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
         for minutes in minutes_lst:
-            self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
+            if self.overwrite_url:
+                self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
             self.link_minutes(minutes)
 
-        self.gql_client.bulk_merge(activity_lst + speech_lst + url_lst)
-        LOGGER.info(f'merged {len(activity_lst)} activities, {len(speech_lst)} speeches, {len(url_lst)} urls')
-
+        self.gql_client.bulk_merge(activity_lst)
+        LOGGER.info(f'merged {len(activity_lst)} activities')
+        if self.overwrite_url:
+            for activity in activity_lst:
+                self.delete_old_urls(activity.id, UrlTitle.HONBUN)
         self.link_activities(activity_lst)
+
+        self.gql_client.bulk_merge(speech_lst + url_lst)
+        LOGGER.info(f'merged {len(speech_lst)} speeches, {len(url_lst)} urls')
         self.link_speeches(speech_lst)
         self.link_urls(url_lst)
 
