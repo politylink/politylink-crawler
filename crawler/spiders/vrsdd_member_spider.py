@@ -8,7 +8,7 @@ from crawler.utils import build_url, UrlTitle
 LOGGER = getLogger(__name__)
 
 
-class SangiinTvSpider(SpiderTemplate):
+class VrsddMemberSpiider(SpiderTemplate):
     handle_httpstatus_list = [404]
     name = 'vrsdd_member'
     domain = 'grips.ac.jp'
