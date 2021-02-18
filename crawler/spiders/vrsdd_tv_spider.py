@@ -71,6 +71,6 @@ class VrsddTvSpider(SpiderTemplate):
         if not match:
             raise ValueError(f'failed to parse minutes name from {text}')
         house_name = '{}議院'.format(match.group(2))
-        meeting_name = match.group(3)
+        meeting_name = match.group(3).split()[-1]  # remove optional modifier like [閉]
         date_time = datetime.strptime(match.group(4), '%Y/%m/%d')
         return house_name, meeting_name, date_time
