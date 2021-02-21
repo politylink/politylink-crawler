@@ -6,7 +6,7 @@ from typing import List
 import scrapy
 
 from crawler.spiders import TvSpiderTemplate
-from crawler.utils import build_minutes, build_url, UrlTitle
+from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate
 
 LOGGER = getLogger(__name__)
 
@@ -96,10 +96,13 @@ class ShugiinTvSpider(TvSpiderTemplate):
         if topics:
             LOGGER.debug(f'scraped topics={topics}')
             minutes.topics = topics
-        speakers = self.scrape_table(tables[2])
+            minutes.topic_ids = self.get_topic_ids(topics)
+        speakers = self.scrape_table(tables[2], first_section_only=True)
+        speakers = deduplicate(speakers)
         if speakers:
             LOGGER.debug(f'scraped speakers={speakers}')
-            minutes.speakers = speakers  # this field won't be written to GraphQL directly
+            minutes.speakers = speakers
+            minutes.speaker_ids = self.get_speakers_ids(speakers)
 
         activity_list, url_list = self.build_activities_and_urls(tables.xpath('.//a'), minutes, response.url)
         url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)
@@ -109,10 +112,12 @@ class ShugiinTvSpider(TvSpiderTemplate):
         return minutes, activity_list, url_list
 
     @staticmethod
-    def scrape_table(table) -> List[str]:
+    def scrape_table(table, first_section_only=False) -> List[str]:
         texts = []
         for row in table.xpath('./tr'):
             if './images/spacer.gif' not in row.get():  # skip header row
+                if first_section_only and texts:
+                    return texts
                 continue
             maybe_text = next((x.strip() for x in row.xpath('./td//text()').getall() if x.strip()), None)
             if maybe_text:

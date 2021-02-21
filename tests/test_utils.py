@@ -1,4 +1,4 @@
-from crawler.utils import parse_name_str, extract_bill_number_or_none
+from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate
 
 
 def test_parse_name_str():
@@ -11,3 +11,8 @@ def test_extract_bill_number_or_none():
     assert '第204回国会閣法第9号' == extract_bill_number_or_none('第204回国会閣法第9号')
     assert '第200回国会衆法第1号' == extract_bill_number_or_none('200衆1')
     assert extract_bill_number_or_none('地方税法等の一部を改正する法律案') is None
+
+
+def test_deduplicate():
+    assert [] == deduplicate([])
+    assert ['aaa', 'bbb', 'ccc', 'ddd'] == deduplicate(['aaa', 'bbb', 'ccc', 'aaa', 'ddd', 'bbb'])

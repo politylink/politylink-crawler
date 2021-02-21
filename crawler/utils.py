@@ -249,3 +249,7 @@ def extract_bill_number_or_none(text):
         return None
     bill_number = '第{}回国会{}法第{}号'.format(match.group(1), match.group(3), match.group(4))
     return bill_number
+
+
+def deduplicate(items):
+    return list(dict.fromkeys(items))

@@ -73,6 +73,7 @@ class MinutesSpider(SpiderTemplate):
                 topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
                 if topics:
                     minutes.topics = topics
+                    minutes.topic_ids = self.get_topic_ids(topics)
             except ValueError as e:
                 LOGGER.warning(f'failed to parse minutes: {e}')
                 continue
