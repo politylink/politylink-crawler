@@ -5,7 +5,7 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import TvSpiderTemplate
-from crawler.utils import build_minutes, build_url, UrlTitle
+from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate
 
 LOGGER = getLogger(__name__)
 
@@ -15,7 +15,7 @@ class SangiinTvSpider(TvSpiderTemplate):
     domain = 'sangiin.go.jp'
     house_name = '参議院'
 
-    def __init__(self, next_id=-1, failure_in_row_limit=10, *args, **kwargs):
+    def __init__(self, next_id=-1, last_id=100000, failure_in_row_limit=10, *args, **kwargs):
         super(SangiinTvSpider, self).__init__(*args, **kwargs)
         if next_id == -1:
             try:
@@ -25,6 +25,7 @@ class SangiinTvSpider(TvSpiderTemplate):
                 raise Exception(msg) from e
 
         self.next_id = int(next_id)
+        self.last_id = int(last_id)
         self.failure_in_row_limit = failure_in_row_limit
         self.failure_in_row = 0
 
@@ -58,7 +59,7 @@ class SangiinTvSpider(TvSpiderTemplate):
         except Exception:
             LOGGER.exception(f'failed to parse minutes from {response.url}')
             self.failure_in_row += 1
-            if self.failure_in_row < self.failure_in_row_limit:
+            if self.next_id < self.last_id and self.failure_in_row < self.failure_in_row_limit:
                 yield response.follow(self.build_next_url(), callback=self.parse)
             return
 
@@ -69,7 +70,8 @@ class SangiinTvSpider(TvSpiderTemplate):
         self.link_urls(url_list)
 
         self.failure_in_row = 0
-        yield response.follow(self.build_next_url(), callback=self.parse)
+        if self.next_id < self.last_id:
+            yield response.follow(self.build_next_url(), callback=self.parse)
 
     def scrape_minutes_activities_urls(self, response):
         content = response.xpath('//div[@id="detail-contents-inner"]')
@@ -95,10 +97,13 @@ class SangiinTvSpider(TvSpiderTemplate):
         if topics:
             LOGGER.debug(f'scraped topics={topics}')
             minutes.topics = topics
+            minutes.topic_ids = self.get_topic_ids(topics)
         speakers = content.xpath('./ul/li/a/text()').getall()
+        speakers = deduplicate(speakers)
         if speakers:
             LOGGER.debug(f'scraped speakers={speakers}')
             minutes.speakers = speakers
+            minutes.speaker_ids = self.get_speakers_ids(speakers)
 
         activity_list, url_list = self.build_activities_and_urls(content.xpath('./ul/li/a'), minutes, response.url)
         url = build_url(response.url, UrlTitle.SHINGI_TYUKEI, self.domain)

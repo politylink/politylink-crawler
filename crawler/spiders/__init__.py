@@ -8,7 +8,7 @@ from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_ra
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
-from politylink.graphql.schema import Minutes, News
+from politylink.graphql.schema import News, Minutes
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
 
 LOGGER = logging.getLogger(__name__)
@@ -60,10 +60,20 @@ class SpiderTemplate(scrapy.Spider):
 
     def link_minutes(self, minutes):
         """
-        link Minutes to Bill, Committee and Member
+        link Minutes to Bill, Member, and Committee
         """
 
-        self.link_bills_by_topics(minutes)
+        if hasattr(minutes, 'topic_ids'):
+            bill_ids = list(filter(lambda x: x, minutes.topic_ids))
+            if bill_ids:
+                self.gql_client.bulk_link([minutes.id] * len(bill_ids), bill_ids)
+                LOGGER.info(f'linked {len(bill_ids)} bills to {minutes.id}')
+
+        if hasattr(minutes, 'speaker_ids'):
+            member_ids = list(filter(lambda x: x, minutes.speaker_ids))
+            if member_ids:
+                self.gql_client.bulk_link(member_ids, [minutes.id] * len(member_ids))
+                LOGGER.info(f'linked {len(member_ids)} members to {minutes.id}')
 
         try:
             committee = self.committee_finder.find_one(minutes.name)
@@ -71,20 +81,6 @@ class SpiderTemplate(scrapy.Spider):
             LOGGER.warning(e)
         else:
             self.gql_client.link(minutes.id, committee.id)
-
-        if hasattr(minutes, 'speakers'):
-            from_ids = []
-            to_ids = []
-            for speaker in minutes.speakers:
-                try:
-                    member = self.member_finder.find_one(speaker)
-                except ValueError as e:
-                    LOGGER.debug(e)  # this is expected when speaker is not member
-                else:
-                    from_ids.append(member.id)
-                    to_ids.append(minutes.id)
-            if from_ids:
-                self.gql_client.bulk_link(from_ids, to_ids)
 
     def link_speeches(self, speeches):
         from_ids, to_ids = [], []
@@ -101,26 +97,6 @@ class SpiderTemplate(scrapy.Spider):
                 self.gql_client.delete(url.id)
                 LOGGER.info(f'deleted {url.id}')
 
-    def link_bills_by_topics(self, minutes: Minutes):
-        if not hasattr(minutes, 'topics'):
-            return
-
-        from_ids, to_ids = [], []
-        for topic in minutes.topics:
-            try:
-                maybe_bill_number = extract_bill_number_or_none(topic)
-                query = maybe_bill_number if maybe_bill_number else topic
-                bill = self.bill_finder.find_one(query)
-            except ValueError as e:
-                LOGGER.debug(e)  # this is expected when topic does not include bill
-            else:
-                from_ids.append(minutes.id)
-                to_ids.append(bill.id)
-                LOGGER.debug(f'link {minutes.id} to {bill.id}')
-        if from_ids:
-            self.gql_client.bulk_link(from_ids, to_ids)
-            LOGGER.info(f'linked {len(from_ids)} bills to {minutes.id}')
-
     def get_diet(self, diet_number=None):
         if diet_number:
             return self.gql_client.get(f'Diet:{diet_number}', ['id', 'number', 'start_date'])
@@ -130,6 +106,30 @@ class SpiderTemplate(scrapy.Spider):
     def get_latest_diet(self):
         diets = sorted(self.gql_client.get_all_diets(['id', 'number', 'start_date']), key=lambda x: x.number)
         return diets[-1]
+
+    def get_topic_ids(self, topics):
+        def get_topic_id(topic):
+            maybe_bill_number = extract_bill_number_or_none(topic)
+            query = maybe_bill_number if maybe_bill_number else topic
+            try:
+                bill = self.bill_finder.find_one(query)
+                return bill.id
+            except ValueError as e:
+                LOGGER.debug(e)  # this is expected when topic does not include bill
+            return ''
+
+        return list(map(lambda x: get_topic_id(x), topics))
+
+    def get_speakers_ids(self, speakers):
+        def get_speaker_id(speaker):
+            try:
+                member = self.member_finder.find_one(speaker)
+                return member.id
+            except ValueError as e:
+                LOGGER.debug(e)  # this is expected when speaker is not member
+            return ''
+
+        return list(map(lambda x: get_speaker_id(x), speakers))
 
 
 class TableSpiderTemplate(SpiderTemplate):
