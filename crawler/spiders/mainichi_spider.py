@@ -27,7 +27,7 @@ class MainichiSpider(NewsSpiderTemplate):
     def scrape_news_and_text(self, response):
         maybe_json_ld = extract_json_ld_or_none(response)
         title = response.xpath('//h1[@class="title-page"]/text()').get().strip()
-        article = response.xpath('//section[@class="articledetail-body"]')
+        article = response.css('section#articledetail-body')
         body = strip_join(article.xpath('.//p/text()').getall())
 
         news = build_news(response.url, self.publisher)
