@@ -8,7 +8,6 @@ from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTime
     Activity
 from politylink.idgen import idgen
 
-
 LOGGER = getLogger(__name__)
 
 
