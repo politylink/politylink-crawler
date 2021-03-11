@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from datetime import datetime
 from logging import getLogger
 
@@ -22,6 +23,7 @@ class MinutesSpider(SpiderTemplate):
         self.overwrite_url = overwrite == 'true'
         self.next_pos = 1
         self.num_key_phrases = 3
+        self.key_phrase_extractor = KeyPhraseExtractor()
 
     def build_next_url(self):
         return 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords=5&recordPacking=JSON'.format(
@@ -64,7 +66,6 @@ class MinutesSpider(SpiderTemplate):
 
     def scrape_minutes_activities_speeches_urls(self, response_body):
         minutes_lst, activity_lst, speech_lst, url_lst = [], [], [], []
-        key_phrase_extractor = KeyPhraseExtractor()
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -85,35 +86,28 @@ class MinutesSpider(SpiderTemplate):
             url.to_id = minutes.id
             url_lst.append(url)
 
-            speech_info = {}
+            speaker2recs = defaultdict(list)
             for speech_rec in meeting_rec['speechRecord']:
                 speaker = speech_rec['speaker']
+                speaker2recs[speaker].append(speech_rec)
+
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
                 if self.collect_speech:
                     speech_lst.append(speech)
-                if speaker not in speech_info:
-                    try:
-                        member = self.member_finder.find_one(speaker)
-                    except Exception:
-                        pass
-                    else:
-                        speech_info[speaker] = {}
-                        speech_info[speaker]['member.id'] = member.id
-                        speech_info[speaker]['speech'] = speech_rec['speech']
-                        speech_info[speaker]['speechURL'] = speech_rec['speechURL']
-                else:
-                    speech_info[speaker]['speech'] += speech_rec['speech']
 
-            for speaker in speech_info:
-                key_phrases = key_phrase_extractor.extract(speech_info[speaker]['speech'], self.num_key_phrases)
-                activity = build_minutes_activity(speech_info[speaker]['member.id'],
-                                                  minutes.id,
-                                                  minutes.start_date_time,
-                                                  key_phrases)
-                url = build_url(speech_info[speaker]['speechURL'], UrlTitle.HONBUN, self.domain)
-                url.to_id = activity.id
-                activity_lst.append(activity)
-                url_lst.append(url)
+            for speaker, recs in speaker2recs.items():
+                try:
+                    member = self.member_finder.find_one(speaker)
+                except Exception:
+                    pass
+                else:
+                    speech = ''.join([rec['speech'] for rec in recs])
+                    key_phrases = self.key_phrase_extractor.extract(speech, self.num_key_phrases)
+                    activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time, key_phrases)
+                    url = build_url(recs[0]['speechURL'], UrlTitle.HONBUN, self.domain)
+                    url.to_id = activity.id
+                    activity_lst.append(activity)
+                    url_lst.append(url)
 
         return minutes_lst, activity_lst, speech_lst, url_lst
