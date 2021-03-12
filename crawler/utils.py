@@ -130,11 +130,12 @@ def build_diet(number):
     return diet
 
 
-def build_minutes_activity(member_id, minutes_id, dt):
+def build_minutes_activity(member_id, minutes_id, dt, keyphrases):
     activity = Activity(None)
     activity.member_id = member_id
     activity.minutes_id = minutes_id
     activity.datetime = to_neo4j_datetime(dt)
+    activity.keyphrases = keyphrases
     activity.id = idgen(activity)
     return activity
 
