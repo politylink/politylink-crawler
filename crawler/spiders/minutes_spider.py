@@ -4,6 +4,7 @@ from datetime import datetime
 from logging import getLogger
 
 import scrapy
+
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity
 from politylink.nlp.keyphrase import KeyPhraseExtractor
@@ -103,8 +104,8 @@ class MinutesSpider(SpiderTemplate):
                     pass
                 else:
                     speech = ''.join([rec['speech'] for rec in recs])
-                    key_phrases = self.key_phrase_extractor.extract(speech, self.num_key_phrases)
-                    activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time, key_phrases)
+                    activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
+                    activity.keyphrases = self.key_phrase_extractor.extract(speech, self.num_key_phrases)
                     url = build_url(recs[0]['speechURL'], UrlTitle.HONBUN, self.domain)
                     url.to_id = activity.id
                     activity_lst.append(activity)
