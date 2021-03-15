@@ -6,7 +6,9 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity
+from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
+    clean_speech
+from politylink.elasticsearch.schema import MinutesText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
 
 LOGGER = getLogger(__name__)
@@ -40,7 +42,8 @@ class MinutesSpider(SpiderTemplate):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, activity_lst, speech_lst, url_lst = self.scrape_minutes_activities_speeches_urls(response_body)
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst = \
+            self.scrape_minutes_activities_speeches_urls(response_body)
 
         self.gql_client.bulk_merge(minutes_lst)
         LOGGER.info(f'merged {len(minutes_lst)} minutes')
@@ -48,6 +51,10 @@ class MinutesSpider(SpiderTemplate):
             if self.overwrite_url:
                 self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
             self.link_minutes(minutes)
+
+        for minutes_text in minutes_text_lst:
+            self.es_client.index(minutes_text)
+        LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
 
         self.gql_client.bulk_merge(activity_lst)
         LOGGER.info(f'merged {len(activity_lst)} activities')
@@ -66,7 +73,7 @@ class MinutesSpider(SpiderTemplate):
             yield response.follow(self.build_next_url(), callback=self.parse)
 
     def scrape_minutes_activities_speeches_urls(self, response_body):
-        minutes_lst, activity_lst, speech_lst, url_lst = [], [], [], []
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst = [], [], [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -88,9 +95,11 @@ class MinutesSpider(SpiderTemplate):
             url_lst.append(url)
 
             speaker2recs = defaultdict(list)
+            full_text = ''
             for speech_rec in meeting_rec['speechRecord']:
                 speaker = speech_rec['speaker']
                 speaker2recs[speaker].append(speech_rec)
+                full_text += clean_speech(speech_rec['speech'])
 
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
@@ -111,4 +120,10 @@ class MinutesSpider(SpiderTemplate):
                     activity_lst.append(activity)
                     url_lst.append(url)
 
-        return minutes_lst, activity_lst, speech_lst, url_lst
+            minutes_text_lst.append(MinutesText({
+                'id': minutes.id,
+                'title': minutes.name,
+                'body': full_text
+            }))
+
+        return minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst
