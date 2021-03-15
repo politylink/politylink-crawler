@@ -1,4 +1,4 @@
-from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate
+from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech
 
 
 def test_parse_name_str():
@@ -16,3 +16,9 @@ def test_extract_bill_number_or_none():
 def test_deduplicate():
     assert [] == deduplicate([])
     assert ['aaa', 'bbb', 'ccc', 'ddd'] == deduplicate(['aaa', 'bbb', 'ccc', 'aaa', 'ddd', 'bbb'])
+
+
+def test_clean_speech():
+    before = '○議長（大島理森君）　各請願は委員長の報告を省略して採択するに御異議ありませんか。 　　　　〔「異議なし」と呼ぶ者あり〕'
+    after = '各請願は委員長の報告を省略して採択するに御異議ありませんか。〔「異議なし」と呼ぶ者あり〕'
+    assert after == clean_speech(before)

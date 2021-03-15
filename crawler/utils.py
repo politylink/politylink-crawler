@@ -207,6 +207,10 @@ def clean_topic(topic):
     return topic
 
 
+def clean_speech(speech):
+    return ''.join(speech.split()[1:])  # drop speaker name (first item)
+
+
 def strip_join(str_list, sep=''):
     return sep.join(map(lambda x: x.strip(), str_list))
 
