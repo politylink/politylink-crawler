@@ -52,10 +52,6 @@ class MinutesSpider(SpiderTemplate):
                 self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
             self.link_minutes(minutes)
 
-        for minutes_text in minutes_text_lst:
-            self.es_client.index(minutes_text)
-        LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
-
         self.gql_client.bulk_merge(activity_lst)
         LOGGER.info(f'merged {len(activity_lst)} activities')
         if self.overwrite_url:
@@ -63,10 +59,18 @@ class MinutesSpider(SpiderTemplate):
                 self.delete_old_urls(activity.id, UrlTitle.HONBUN)
         self.link_activities(activity_lst)
 
-        self.gql_client.bulk_merge(speech_lst + url_lst)
-        LOGGER.info(f'merged {len(speech_lst)} speeches, {len(url_lst)} urls')
-        self.link_speeches(speech_lst)
+        self.gql_client.bulk_merge(url_lst)
+        LOGGER.info(f'merged {len(url_lst)} urls')
         self.link_urls(url_lst)
+
+        if self.collect_speech:
+            self.gql_client.bulk_merge(speech_lst)
+            self.link_speeches(speech_lst)
+            LOGGER.info(f'merged {len(speech_lst)} speeches')
+
+            for minutes_text in minutes_text_lst:
+                self.es_client.index(minutes_text)
+            LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
 
         self.next_pos = response_body['nextRecordPosition']
         if self.next_pos is not None:
@@ -103,8 +107,7 @@ class MinutesSpider(SpiderTemplate):
 
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
-                if self.collect_speech:
-                    speech_lst.append(speech)
+                speech_lst.append(speech)
 
             for speaker, recs in speaker2recs.items():
                 try:
