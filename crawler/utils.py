@@ -5,7 +5,7 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet, \
-    Activity
+    Activity, Billstatus
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -148,6 +148,15 @@ def build_bill_activity(member_id, bill_id, dt):
     return activity
 
 
+def build_billstatus(bill_id, minutes_id, status):
+    billstatus = Billstatus(None)
+    billstatus.bill_id = bill_id
+    billstatus.minutes_id = minutes_id
+    billstatus.status = status
+    billstatus.id = idgen(billstatus)
+    return billstatus
+
+
 def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day,
                                hour=dt.hour, minute=dt.minute, second=dt.second)
@@ -204,6 +213,34 @@ def clean_topic(topic):
     if topic.endswith('ため'):
         return topic[:-2]
     return topic
+
+
+def extract_discussed_bill(speech, bill_names, discussed_bill):
+    for bill_name in bill_names:
+        if re.search(bill_name + '（?.*）?を議題といたします', speech):
+            return bill_name
+    if 'を議題といたします' in speech:
+        return None
+    return discussed_bill
+
+
+def extract_billstatus(speech):
+    status_lst = []
+    if '趣旨の説明を聴取いたします' in speech:
+        status_lst.append('趣旨説明')
+    if '質疑に入ります' in speech:
+        status_lst.append('質疑')
+    if '討論に入ります' in speech:
+        status_lst.append('討論')
+    if '採決に入ります' in speech:
+        status_lst.append('採決')
+    if '委員長の報告を求めます' in speech:
+        status_lst.append('委員長報告')
+    return status_lst
+
+
+def clean_report(speech):
+    return ''.join(speech.split('。')[1:-2])
 
 
 def clean_speech(speech):

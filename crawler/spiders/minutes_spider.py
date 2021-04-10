@@ -4,10 +4,9 @@ from datetime import datetime
 from logging import getLogger
 
 import scrapy
-
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
-    clean_speech
+    clean_speech, extract_discussed_bill, extract_billstatus, clean_report, build_billstatus
 from politylink.elasticsearch.schema import MinutesText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
 
@@ -51,6 +50,11 @@ class MinutesSpider(SpiderTemplate):
             if self.overwrite_url:
                 self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
             self.link_minutes(minutes)
+
+        billstatus_lst = self.scrape_billstatus(response_body)
+        self.gql_client.bulk_merge(billstatus_lst)
+        LOGGER.info(f'merged {len(billstatus_lst)} bill status')
+        self.link_billstatus(billstatus_lst)
 
         self.gql_client.bulk_merge(activity_lst)
         LOGGER.info(f'merged {len(activity_lst)} activities')
@@ -104,7 +108,6 @@ class MinutesSpider(SpiderTemplate):
                 speaker = speech_rec['speaker']
                 speaker2recs[speaker].append(speech_rec)
                 full_text += clean_speech(speech_rec['speech'])
-
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
                 speech_lst.append(speech)
@@ -130,3 +133,41 @@ class MinutesSpider(SpiderTemplate):
             }))
 
         return minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst
+
+    def scrape_billstatus(self, response_body):
+        billstatus_lst = []
+
+        for meeting_rec in response_body['meetingRecord']:
+            minutes = self.get_minutes(meeting_rec['issueID'])
+            bills = minutes.discussed_bills
+            bill_name2id = {}
+            for bill in bills:
+                bill_name2id[bill.name] = bill.id
+
+            bill2status = defaultdict(set)
+            bill2speech = defaultdict(set)
+            discussed_bill = None
+            is_report = False
+            for speech_rec in meeting_rec['speechRecord']:
+                if is_report and (discussed_bill is not None):
+                    bill2speech[discussed_bill] = clean_report(speech_rec['speech'])
+                    is_report = False
+
+                if speech_rec['speakerPosition'] == '議長':
+                    discussed_bill = extract_discussed_bill(speech_rec['speech'], list(bill_name2id.keys()),
+                                                            discussed_bill)
+                    if discussed_bill is not None:
+                        billstatus = extract_billstatus(speech_rec['speech'])
+                        if len(billstatus) > 0:
+                            bill2status[discussed_bill].update(billstatus)
+                        if '委員長報告' in billstatus:
+                            is_report = True
+
+            for bill_name, bill_id in bill_name2id.items():
+                if bill_name in bill2status.keys():
+                    billstatus = build_billstatus(bill_id, minutes.id, bill2status[bill_name])
+                    if bill_name in bill2speech.keys():
+                        billstatus.speech = bill2speech[bill_name]
+                    billstatus_lst.append(billstatus)
+
+        return billstatus_lst

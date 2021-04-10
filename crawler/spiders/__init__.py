@@ -2,13 +2,12 @@ import logging
 from urllib.parse import urljoin
 
 import scrapy
-
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
     build_minutes_activity, extract_bill_number_or_none
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
-from politylink.graphql.schema import News, Minutes
+from politylink.graphql.schema import News, _MinutesFilter
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
 
 LOGGER = logging.getLogger(__name__)
@@ -55,6 +54,20 @@ class SpiderTemplate(scrapy.Spider):
                 if hasattr(activity, id_field):
                     from_ids.append(activity.id)
                     to_ids.append(getattr(activity, id_field))
+        if from_ids:
+            self.gql_client.bulk_link(from_ids, to_ids)
+
+    def link_billstatus(self, billstatus_lst):
+        """
+        link Billstatus to Bill and Minutes
+        """
+
+        from_ids, to_ids = [], []
+        for billstatus in billstatus_lst:
+            for id_field in ['bill_id', 'minutes_id']:
+                if hasattr(billstatus, id_field):
+                    from_ids.append(billstatus.id)
+                    to_ids.append(getattr(billstatus, id_field))
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
@@ -130,6 +143,11 @@ class SpiderTemplate(scrapy.Spider):
             return ''
 
         return list(map(lambda x: get_speaker_id(x), speakers))
+
+    def get_minutes(self, ndl_min_id):
+        filter_ = _MinutesFilter(None)
+        filter_.ndl_min_id = ndl_min_id
+        return self.gql_client.get_all_minutes(fields=['id', 'discussed_bills'], filter_=filter_)[0]
 
 
 class TableSpiderTemplate(SpiderTemplate):
