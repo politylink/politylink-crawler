@@ -7,6 +7,7 @@ import scrapy
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
     clean_speech, extract_discussed_bill, extract_billstatus, clean_report, build_billstatus
+from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import MinutesText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
 
@@ -17,15 +18,18 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, speech='false', overwrite='false', *args, **kwargs):
+    def __init__(self, start_date, end_date, speech='false', text='false', overwrite='false',
+                 elasticsearch='http://localhost:9200', *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
         self.end_date = end_date
         self.collect_speech = speech == 'true'
+        self.collect_text = text == 'true'
         self.overwrite_url = overwrite == 'true'
         self.next_pos = 1
         self.num_key_phrases = 3
         self.key_phrase_extractor = KeyPhraseExtractor()
+        self.es_client = ElasticsearchClient(url=elasticsearch)
 
     def build_next_url(self):
         return 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords=5&recordPacking=JSON'.format(
@@ -72,6 +76,7 @@ class MinutesSpider(SpiderTemplate):
             self.link_speeches(speech_lst)
             LOGGER.info(f'merged {len(speech_lst)} speeches')
 
+        if self.collect_text:
             for minutes_text in minutes_text_lst:
                 self.es_client.index(minutes_text)
             LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
