@@ -29,7 +29,7 @@ class VrsddTvSpider(SpiderTemplate):
     def fetch_next_id(self):
         query = """
         {
-          Minutes(orderBy:startDateTime_desc, first:10) {
+          Minutes(orderBy:startDateTime_desc, first:100) {
             urls{title, url}
           }
         }
