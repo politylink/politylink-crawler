@@ -18,12 +18,14 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, speech='false', text='false', overwrite='false', *args, **kwargs):
+    def __init__(self, start_date, end_date, speech='false', text='false', keyphrase='true', overwrite='false',
+                 *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
         self.end_date = end_date
         self.collect_speech = speech == 'true'
         self.collect_text = text == 'true'
+        self.collect_keyphrase = keyphrase == 'true'
         self.overwrite_url = overwrite == 'true'
         self.next_pos = 1
         self.num_key_phrases = 3
@@ -115,15 +117,15 @@ class MinutesSpider(SpiderTemplate):
                 try:
                     member = self.member_finder.find_one(speaker)
                 except Exception:
-                    pass
-                else:
-                    speech = ''.join([rec['speech'] for rec in recs])
-                    activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
+                    continue  # ignore non member speaker
+                speech = ''.join([rec['speech'] for rec in recs])
+                activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
+                if self.collect_keyphrase:
                     activity.keyphrases = self.key_phrase_extractor.extract(speech, self.num_key_phrases)
-                    url = build_url(recs[0]['speechURL'], UrlTitle.HONBUN, self.domain)
-                    url.to_id = activity.id
-                    activity_lst.append(activity)
-                    url_lst.append(url)
+                url = build_url(recs[0]['speechURL'], UrlTitle.HONBUN, self.domain)
+                url.to_id = activity.id
+                activity_lst.append(activity)
+                url_lst.append(url)
 
             minutes_text_lst.append(MinutesText({
                 'id': minutes.id,
