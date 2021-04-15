@@ -70,8 +70,9 @@ class MinutesSpider(SpiderTemplate):
             self.gql_client.bulk_merge(speech_lst)
             self.link_speeches(speech_lst)
             LOGGER.info(f'merged {len(speech_lst)} speeches')
-            self.es_client.bulk_index(speech_text_lst)
-            LOGGER.info(f'merged {len(speech_text_lst)} speech texts')
+            if self.collect_text:
+                self.es_client.bulk_index(speech_text_lst)
+                LOGGER.info(f'merged {len(speech_text_lst)} speech texts')
 
         if self.collect_text:
             self.es_client.bulk_index(minutes_text_lst)
@@ -105,8 +106,7 @@ class MinutesSpider(SpiderTemplate):
 
             # pre-calculate speaker-member map until MemberFinder becomes fast (POL-285)
             speaker2member = dict()
-            speakers = set([rec['speaker'] for rec in meeting_rec['speechRecord']])
-            for speaker in speakers:
+            for speaker in set(map(lambda x: x['speaker'], meeting_rec['speechRecord'])):
                 try:
                     speaker2member[speaker] = self.member_finder.find_one(speaker, exact_match=True)
                 except Exception:
