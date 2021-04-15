@@ -8,7 +8,7 @@ import scrapy
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
     clean_speech
-from politylink.elasticsearch.schema import MinutesText
+from politylink.elasticsearch.schema import MinutesText, SpeechText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
 
 LOGGER = getLogger(__name__)
@@ -45,7 +45,7 @@ class MinutesSpider(SpiderTemplate):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst = \
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst = \
             self.scrape_minutes_activities_speeches_urls(response_body)
 
         self.gql_client.bulk_merge(minutes_lst)
@@ -70,10 +70,12 @@ class MinutesSpider(SpiderTemplate):
             self.gql_client.bulk_merge(speech_lst)
             self.link_speeches(speech_lst)
             LOGGER.info(f'merged {len(speech_lst)} speeches')
+            if self.collect_text:
+                self.es_client.bulk_index(speech_text_lst)
+                LOGGER.info(f'merged {len(speech_text_lst)} speech texts')
 
         if self.collect_text:
-            for minutes_text in minutes_text_lst:
-                self.es_client.index(minutes_text)
+            self.es_client.bulk_index(minutes_text_lst)
             LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
 
         self.next_pos = response_body['nextRecordPosition']
@@ -81,7 +83,7 @@ class MinutesSpider(SpiderTemplate):
             yield response.follow(self.build_next_url(), callback=self.parse)
 
     def scrape_minutes_activities_speeches_urls(self, response_body):
-        minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst = [], [], [], [], []
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst = [], [], [], [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -102,22 +104,39 @@ class MinutesSpider(SpiderTemplate):
             url.to_id = minutes.id
             url_lst.append(url)
 
+            # pre-calculate speaker-member map until MemberFinder becomes fast (POL-285)
+            speaker2member = dict()
+            for speaker in set(map(lambda x: x['speaker'], meeting_rec['speechRecord'])):
+                try:
+                    speaker2member[speaker] = self.member_finder.find_one(speaker, exact_match=True)
+                except Exception:
+                    continue
+
             speaker2recs = defaultdict(list)
             full_text = ''
             for speech_rec in meeting_rec['speechRecord']:
                 speaker = speech_rec['speaker']
                 speaker2recs[speaker].append(speech_rec)
-                full_text += clean_speech(speech_rec['speech'])
+                cleaned_speech = clean_speech(speech_rec['speech'])
+                full_text += cleaned_speech
 
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
+                if speaker in speaker2member:
+                    speech.member_id = speaker2member[speaker].id  # only for link
                 speech_lst.append(speech)
+                speech_text_lst.append(SpeechText({
+                    'id': speech.id,
+                    'title': minutes.name,
+                    'speaker': speaker,
+                    'body': cleaned_speech,
+                    'date': meeting_rec['date']
+                }))
 
             for speaker, recs in speaker2recs.items():
-                try:
-                    member = self.member_finder.find_one(speaker)
-                except Exception:
+                if speaker not in speaker2member:
                     continue  # ignore non member speaker
+                member = speaker2member[speaker]
                 speech = ''.join([rec['speech'] for rec in recs])
                 activity = build_minutes_activity(member.id, minutes.id, minutes.start_date_time)
                 if self.collect_keyphrase:
@@ -134,4 +153,4 @@ class MinutesSpider(SpiderTemplate):
                 'date': meeting_rec['date']
             }))
 
-        return minutes_lst, minutes_text_lst, activity_lst, speech_lst, url_lst
+        return minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst
