@@ -87,6 +87,9 @@ class SpiderTemplate(scrapy.Spider):
         for speech in speeches:
             from_ids.append(speech.id)
             to_ids.append(speech.minutes_id)
+            if hasattr(speech, 'member_id'):
+                from_ids.append(speech.member_id)
+                to_ids.append(speech.id)
         if from_ids:
             self.gql_client.bulk_link(from_ids, to_ids)
 
