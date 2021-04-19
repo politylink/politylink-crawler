@@ -18,7 +18,7 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, speech='false', text='false', keyphrase='true', overwrite='false',
+    def __init__(self, start_date, end_date, pos=1, speech='false', text='false', keyphrase='true', overwrite='false',
                  *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
@@ -27,7 +27,7 @@ class MinutesSpider(SpiderTemplate):
         self.collect_text = text == 'true'
         self.collect_keyphrase = keyphrase == 'true'
         self.overwrite_url = overwrite == 'true'
-        self.next_pos = 1
+        self.next_pos = int(pos)
         self.num_key_phrases = 3
         self.key_phrase_extractor = KeyPhraseExtractor()
 
