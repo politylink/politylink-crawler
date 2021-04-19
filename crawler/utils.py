@@ -5,7 +5,7 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet, \
-    Activity, Billstatus
+    Activity, BillAction
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -30,6 +30,16 @@ class BillCategory(str, Enum):
     KAKUHOU = '閣法'
     SHUHOU = '衆法'
     SANHOU = '参法'
+
+
+class BillActionType(str, Enum):
+    BILL_EXPLANATION = '趣旨説明'
+    AMENDMENT_EXPLANATION = '修正案趣旨説明'
+    SUPPLEMENTARY_EXPLANATION = '附帯決議趣旨説明'
+    QUESTION = '質疑'
+    DEBATE = '討論'
+    VOTE = '採決'
+    REPORT = '委員長報告'
 
 
 def extract_text(cell):
@@ -148,13 +158,14 @@ def build_bill_activity(member_id, bill_id, dt):
     return activity
 
 
-def build_billstatus(bill_id, minutes_id, status):
-    billstatus = Billstatus(None)
-    billstatus.bill_id = bill_id
-    billstatus.minutes_id = minutes_id
-    billstatus.status = status
-    billstatus.id = idgen(billstatus)
-    return billstatus
+def build_bill_action(bill_id, minutes_id, action):
+    bill_action = BillAction(None)
+    bill_action.bill_id = bill_id
+    bill_action.minutes_id = minutes_id
+    assert isinstance(action, BillActionType)
+    bill_action.action = action.name
+    bill_action.id = idgen(bill_action)
+    return bill_action
 
 
 def to_neo4j_datetime(dt):
@@ -215,36 +226,45 @@ def clean_topic(topic):
     return topic
 
 
-def extract_discussed_bill(speech, bill_names, discussed_bill):
-    for bill_name in bill_names:
-        if re.search(bill_name + '（?.*）?を議題といたします', speech):
-            return bill_name
-    if 'を議題といたします' in speech:
-        return None
-    return discussed_bill
+def extract_topic_id(speech, bill_id2names):
+    topic_ids = []
+    for bill_id, bill_name in bill_id2names.items():
+        if bill_name in speech:
+            topic_ids.append(bill_id)
+    if len(topic_ids) > 1:
+        LOGGER.warning(f'failed to extract topic from {len(topic_ids)} topics')
+    return topic_ids[0] if len(topic_ids) == 1 else None
 
 
-def extract_billstatus(speech):
-    status_lst = []
-    if '趣旨の説明を聴取いたします' in speech:
-        status_lst.append('趣旨説明')
-    if '質疑に入ります' in speech:
-        status_lst.append('質疑')
-    if '討論に入ります' in speech:
-        status_lst.append('討論')
-    if '採決に入ります' in speech:
-        status_lst.append('採決')
-    if '委員長の報告を求めます' in speech:
-        status_lst.append('委員長報告')
-    return status_lst
-
-
-def clean_report(speech):
-    return ''.join(speech.split('。')[1:-2])
+def extract_bill_action_types(speech):
+    action_lst = []
+    if ('趣旨の説明' in speech or '趣旨説明' in speech) and '省略' not in speech and '終わり' not in speech:
+        if '修正案' in speech:
+            action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
+        elif '附帯決議' in speech:
+            action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
+        else:
+            action_lst.append(BillActionType.BILL_EXPLANATION)
+    if '修正案' in speech and '説明' in speech:
+        action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
+    if '質疑' in speech:
+        action_lst.append(BillActionType.QUESTION)
+    if '討論' in speech:
+        action_lst.append(BillActionType.DEBATE)
+    if '採決' in speech:
+        action_lst.append(BillActionType.VOTE)
+    if '委員長の報告' in speech:
+        action_lst.append(BillActionType.REPORT)
+    return action_lst
 
 
 def clean_speech(speech):
     return ''.join(speech.split()[1:])  # drop speaker name (first item)
+
+
+def is_moderator(speech):
+    speaker = speech.split()[0]
+    return '議長' in speaker or '委員長' in speaker
 
 
 def strip_join(str_list, sep=''):
