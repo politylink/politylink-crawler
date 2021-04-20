@@ -5,7 +5,7 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet, \
-    Activity, BillAction
+    Activity, BillAction, BillActionType
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -30,16 +30,6 @@ class BillCategory(str, Enum):
     KAKUHOU = '閣法'
     SHUHOU = '衆法'
     SANHOU = '参法'
-
-
-class BillActionType(str, Enum):
-    BILL_EXPLANATION = '趣旨説明'
-    AMENDMENT_EXPLANATION = '修正案趣旨説明'
-    SUPPLEMENTARY_EXPLANATION = '附帯決議趣旨説明'
-    QUESTION = '質疑'
-    DEBATE = '討論'
-    VOTE = '採決'
-    REPORT = '委員長報告'
 
 
 def extract_text(cell):
@@ -158,12 +148,11 @@ def build_bill_activity(member_id, bill_id, dt):
     return activity
 
 
-def build_bill_action(bill_id, minutes_id, action):
+def build_bill_action(bill_id, minutes_id, bill_action_type):
     bill_action = BillAction(None)
     bill_action.bill_id = bill_id
     bill_action.minutes_id = minutes_id
-    assert isinstance(action, BillActionType)
-    bill_action.action = action.name
+    bill_action.type = bill_action_type
     bill_action.id = idgen(bill_action)
     return bill_action
 
@@ -238,15 +227,13 @@ def extract_topic_id(speech, bill_id2names):
 
 def extract_bill_action_types(speech):
     action_lst = []
-    if ('趣旨の説明' in speech or '趣旨説明' in speech) and '省略' not in speech and '終わり' not in speech:
+    if '説明' in speech and '省略' not in speech and '終わり' not in speech:
         if '修正案' in speech:
             action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
         elif '附帯決議' in speech:
             action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
-        else:
+        elif '趣旨の説明' in speech or '趣旨説明' in speech:
             action_lst.append(BillActionType.BILL_EXPLANATION)
-    if '修正案' in speech and '説明' in speech:
-        action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
     if '質疑' in speech:
         action_lst.append(BillActionType.QUESTION)
     if '討論' in speech:
