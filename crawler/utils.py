@@ -221,7 +221,7 @@ def extract_topic_id(speech, bill_id2names):
         if bill_name in speech:
             topic_ids.append(bill_id)
     if len(topic_ids) > 1:
-        LOGGER.warning(f'failed to extract topic from {len(topic_ids)} topics')
+        LOGGER.warning(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
     return topic_ids[0] if len(topic_ids) == 1 else None
 
 
