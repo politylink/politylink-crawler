@@ -5,7 +5,7 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, _Neo4jDateTimeInput, Committee, News, Member, Diet, \
-    Activity
+    Activity, BillAction, BillActionType
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -148,6 +148,15 @@ def build_bill_activity(member_id, bill_id, dt):
     return activity
 
 
+def build_bill_action(bill_id, minutes_id, bill_action_type):
+    bill_action = BillAction(None)
+    bill_action.bill_id = bill_id
+    bill_action.minutes_id = minutes_id
+    bill_action.type = bill_action_type
+    bill_action.id = idgen(bill_action)
+    return bill_action
+
+
 def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day,
                                hour=dt.hour, minute=dt.minute, second=dt.second)
@@ -206,8 +215,43 @@ def clean_topic(topic):
     return topic
 
 
+def extract_topic_id(speech, bill_id2names):
+    topic_ids = []
+    for bill_id, bill_name in bill_id2names.items():
+        if bill_name in speech:
+            topic_ids.append(bill_id)
+    if len(topic_ids) > 1:
+        LOGGER.warning(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
+    return topic_ids[0] if len(topic_ids) == 1 else None
+
+
+def extract_bill_action_types(speech):
+    action_lst = []
+    if '説明' in speech and '省略' not in speech and '終わり' not in speech:
+        if '修正案' in speech:
+            action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
+        elif '附帯決議' in speech:
+            action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
+        elif '趣旨の説明' in speech or '趣旨説明' in speech:
+            action_lst.append(BillActionType.BILL_EXPLANATION)
+    if '質疑' in speech:
+        action_lst.append(BillActionType.QUESTION)
+    if '討論' in speech:
+        action_lst.append(BillActionType.DEBATE)
+    if '採決' in speech:
+        action_lst.append(BillActionType.VOTE)
+    if '委員長の報告' in speech:
+        action_lst.append(BillActionType.REPORT)
+    return action_lst
+
+
 def clean_speech(speech):
     return ''.join(speech.split()[1:])  # drop speaker name (first item)
+
+
+def is_moderator(speech):
+    speaker = speech.split()[0]
+    return '議長' in speaker or '委員長' in speaker
 
 
 def strip_join(str_list, sep=''):

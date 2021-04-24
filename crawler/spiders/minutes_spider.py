@@ -7,7 +7,7 @@ import scrapy
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
-    clean_speech
+    clean_speech, extract_topic_id, extract_bill_action_types, build_bill_action, is_moderator
 from politylink.elasticsearch.schema import MinutesText, SpeechText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
 
@@ -30,6 +30,8 @@ class MinutesSpider(SpiderTemplate):
         self.next_pos = int(pos)
         self.num_key_phrases = 3
         self.key_phrase_extractor = KeyPhraseExtractor()
+        self.bill_id2names = {bill['id']: bill['name'] for bill in
+                              self.gql_client.get_all_bills(fields=['id', 'name'])}
 
     def build_next_url(self):
         return 'https://kokkai.ndl.go.jp/api/meeting?from={0}&until={1}&startRecord={2}&maximumRecords=5&recordPacking=JSON'.format(
@@ -45,7 +47,7 @@ class MinutesSpider(SpiderTemplate):
 
         LOGGER.info(f'requested {response.url}')
         response_body = json.loads(response.body)
-        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst = \
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, bill_action_lst, url_lst = \
             self.scrape_minutes_activities_speeches_urls(response_body)
 
         self.gql_client.bulk_merge(minutes_lst)
@@ -54,6 +56,13 @@ class MinutesSpider(SpiderTemplate):
             if self.overwrite_url:
                 self.delete_old_urls(minutes.id, UrlTitle.HONBUN)
             self.link_minutes(minutes)
+
+        self.gql_client.bulk_merge(bill_action_lst)
+        LOGGER.info(f'merged {len(bill_action_lst)} bill actions')
+        if self.overwrite_url:
+            for bill_action in bill_action_lst:
+                self.delete_old_urls(bill_action.id, UrlTitle.HONBUN)
+        self.link_bill_action(bill_action_lst)
 
         self.gql_client.bulk_merge(activity_lst)
         LOGGER.info(f'merged {len(activity_lst)} activities')
@@ -83,7 +92,7 @@ class MinutesSpider(SpiderTemplate):
             yield response.follow(self.build_next_url(), callback=self.parse)
 
     def scrape_minutes_activities_speeches_urls(self, response_body):
-        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst = [], [], [], [], [], []
+        minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, bill_action_lst, url_lst = [], [], [], [], [], [], []
 
         for meeting_rec in response_body['meetingRecord']:
             try:
@@ -95,6 +104,8 @@ class MinutesSpider(SpiderTemplate):
                 if topics:
                     minutes.topics = topics
                     minutes.topic_ids = self.get_topic_ids(topics)
+                else:
+                    LOGGER.warning(f'failed to extract topic for {minutes}')
             except ValueError as e:
                 LOGGER.warning(f'failed to parse minutes: {e}')
                 continue
@@ -112,14 +123,15 @@ class MinutesSpider(SpiderTemplate):
                 except Exception:
                     continue
 
-            speaker2recs = defaultdict(list)
-            full_text = ''
+            speaker2recs = defaultdict(list)  # for Activity
+            moderator_recs = []  # for BillAction
+            full_text = ''  # for MinutesText
+
             for speech_rec in meeting_rec['speechRecord']:
                 speaker = speech_rec['speaker']
                 speaker2recs[speaker].append(speech_rec)
                 cleaned_speech = clean_speech(speech_rec['speech'])
                 full_text += cleaned_speech
-
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
                 speech.speaker_name = speaker
                 if speaker in speaker2member:
@@ -132,6 +144,9 @@ class MinutesSpider(SpiderTemplate):
                     'body': cleaned_speech,
                     'date': meeting_rec['date']
                 }))
+
+                if is_moderator(speech_rec['speech']):
+                    moderator_recs.append(speech_rec)
 
             for speaker, recs in speaker2recs.items():
                 if speaker not in speaker2member:
@@ -146,6 +161,8 @@ class MinutesSpider(SpiderTemplate):
                 activity_lst.append(activity)
                 url_lst.append(url)
 
+            bill_action_lst += self.scrape_bill_actions(moderator_recs, minutes, self.bill_id2names)
+
             minutes_text_lst.append(MinutesText({
                 'id': minutes.id,
                 'title': minutes.name,
@@ -153,4 +170,38 @@ class MinutesSpider(SpiderTemplate):
                 'date': meeting_rec['date']
             }))
 
-        return minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, url_lst
+        for bill_action in bill_action_lst:
+            url = build_url(bill_action._url, UrlTitle.HONBUN, self.domain)
+            url.to_id = bill_action.id
+            url_lst.append(url)
+
+        return minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, bill_action_lst, url_lst
+
+    @staticmethod
+    def scrape_bill_actions(moderator_recs, minutes, bill_id2names):
+        bill_action_lst = []
+
+        if not hasattr(minutes, 'topics'):
+            return bill_action_lst
+
+        minutes_bill_id2names = {}
+        for topic_id in minutes.topic_ids:
+            if topic_id in bill_id2names.keys():
+                minutes_bill_id2names[topic_id] = bill_id2names[topic_id]
+
+        current_topic_id = None
+        current_action_types = []
+        for speech_rec in moderator_recs:
+            if any(topic in speech_rec['speech'] for topic in
+                   minutes.topics + list(minutes_bill_id2names.values())):
+                current_topic_id = extract_topic_id(speech_rec['speech'], minutes_bill_id2names)
+                current_action_types = []
+            bill_action_types = extract_bill_action_types(speech_rec['speech'])
+            if current_topic_id and bill_action_types:
+                for bill_action_type in bill_action_types:
+                    if bill_action_type not in current_action_types:
+                        bill_action = build_bill_action(current_topic_id, minutes.id, bill_action_type)
+                        bill_action._url = speech_rec['speechURL']  # to build URL object later
+                        bill_action_lst.append(bill_action)
+                        current_action_types.append(bill_action_type)
+        return bill_action_lst

@@ -1,4 +1,6 @@
-from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech
+from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech, \
+    extract_bill_action_types
+from politylink.graphql.schema import BillActionType
 
 
 def test_parse_name_str():
@@ -22,3 +24,8 @@ def test_clean_speech():
     before = '○議長（大島理森君）　各請願は委員長の報告を省略して採択するに御異議ありませんか。 　　　　〔「異議なし」と呼ぶ者あり〕'
     after = '各請願は委員長の報告を省略して採択するに御異議ありませんか。〔「異議なし」と呼ぶ者あり〕'
     assert after == clean_speech(before)
+
+
+def test_extract_bill_action_types():
+    assert [BillActionType.QUESTION] == extract_bill_action_types('これより質疑に入ります。')
+    assert [] == extract_bill_action_types('本案の趣旨の説明につきましては、これを省略します')
