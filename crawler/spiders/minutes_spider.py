@@ -104,6 +104,8 @@ class MinutesSpider(SpiderTemplate):
                 if topics:
                     minutes.topics = topics
                     minutes.topic_ids = self.get_topic_ids(topics)
+                else:
+                    LOGGER.warning(f'failed to extract topic for {minutes}')
             except ValueError as e:
                 LOGGER.warning(f'failed to parse minutes: {e}')
                 continue
@@ -178,6 +180,9 @@ class MinutesSpider(SpiderTemplate):
     @staticmethod
     def scrape_bill_actions(moderator_recs, minutes, bill_id2names):
         bill_action_lst = []
+
+        if not hasattr(minutes, 'topics'):
+            return bill_action_lst
 
         minutes_bill_id2names = {}
         for topic_id in minutes.topic_ids:
