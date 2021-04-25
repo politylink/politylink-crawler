@@ -3,7 +3,7 @@ from logging import getLogger
 
 from crawler.spiders import NewsSpiderTemplate
 from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, \
-    extract_thumbnail_or_none, extract_full_href_list
+    extract_thumbnail_or_none, extract_full_href_list, to_date_str
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -33,6 +33,11 @@ class MainichiSpider(NewsSpiderTemplate):
         news = build_news(response.url, self.publisher)
         news.title = title
         news.is_paid = 'この記事は有料記事です' in response.body.decode('UTF-8')
+
+        news_text = NewsText({'id': news.id})
+        news_text.title = title
+        news_text.body = body
+
         if maybe_json_ld:
             json_ld = maybe_json_ld
             maybe_thumbnail = extract_thumbnail_or_none(json_ld)
@@ -40,10 +45,7 @@ class MainichiSpider(NewsSpiderTemplate):
                 news.thumbnail = maybe_thumbnail
             news.published_at = self.to_datetime(json_ld['datePublished'])
             news.last_modified_at = self.to_datetime(json_ld['dateModified'])
-
-        news_text = NewsText({'id': news.id})
-        news_text.title = title
-        news_text.body = body
+            news_text.date = to_date_str(news.published_at)
 
         return news, news_text
 
