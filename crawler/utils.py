@@ -162,6 +162,10 @@ def to_neo4j_datetime(dt):
                                hour=dt.hour, minute=dt.minute, second=dt.second)
 
 
+def to_date_str(dt):
+    return '{:02d}-{:02d}-{:02d}'.format(dt.year, dt.month, dt.day)
+
+
 def extract_topics(first_speech):
     def format_first_speech(first_speech):
         start_idx, end_idx = re.search(r'○?本日の会議に付した案件|○?本日の公聴会で意見を聞いた案件', first_speech).span()

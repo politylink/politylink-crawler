@@ -4,7 +4,7 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import NewsSpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, strip_join, extract_full_href_list
+from crawler.utils import build_news, to_neo4j_datetime, strip_join, extract_full_href_list, to_date_str
 from politylink.elasticsearch.schema import NewsText
 
 LOGGER = getLogger(__name__)
@@ -44,13 +44,14 @@ class NikkeiSpider(NewsSpiderTemplate):
         news.title = title
         news.is_paid = 'この記事は会員限定です' in response.body.decode('UTF-8')
 
-        maybe_published_at_str = response.css('div.TimeStamp_t165nkxq').xpath('.//time/@datetime').get()
-        if maybe_published_at_str:
-            news.published_at = self.to_datetime2(maybe_published_at_str)
-
         news_text = NewsText({'id': news.id})
         news_text.title = title
         news_text.body = body
+
+        maybe_published_at_str = response.css('div.TimeStamp_t165nkxq').xpath('.//time/@datetime').get()
+        if maybe_published_at_str:
+            news.published_at = self.to_datetime2(maybe_published_at_str)
+            news_text.date = to_date_str(news.published_at)
 
         return news, news_text
 
