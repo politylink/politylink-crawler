@@ -127,7 +127,7 @@ class MinutesSpider(SpiderTemplate):
             moderator_recs = []  # for BillAction
             full_text = ''  # for MinutesText
 
-            for speech_rec in meeting_rec['speechRecord']:
+            for speech_rec in meeting_rec['speechRecord'][1:]:  # skip 会議録情報
                 speaker = speech_rec['speaker']
                 speaker2recs[speaker].append(speech_rec)
                 cleaned_speech = clean_speech(speech_rec['speech'])
