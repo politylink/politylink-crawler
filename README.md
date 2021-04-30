@@ -14,7 +14,7 @@ poetry install
 poetry run scrapy crawl shugiin
 poetry run scrapy crawl sangiin
 poetry run scrapy crawl shugiin_minutes
-poetry run scrapy crawl minutes -a start_date=2020-12-01 -a end_date=2020-12-08 -a pos=1 -a speech=false -a text=true -a keyphrase=false -a overwrite=false
+poetry run scrapy crawl minutes -a start_date=2020-12-01 -a end_date=2020-12-08 -a pos=1 -a text=true -a keyphrase=false -a overwrite=false
 poetry run scrapy crawl shugiin_tv -a start_date=2020-12-01 -a end_date=2020-12-08
 poetry run scrapy crawl sangiin_tv -a next_id=6140 -a last_id=6143
 poetry run scrapy crawl mainichi
