@@ -97,6 +97,7 @@ class MinutesSpider(SpiderTemplate):
                     meeting_rec['nameOfHouse'] + meeting_rec['nameOfMeeting'],
                     datetime.strptime(meeting_rec['date'], '%Y-%m-%d'))
                 minutes.ndl_min_id = meeting_rec['issueID']
+                minutes.ndl_url = meeting_rec['meetingURL']
                 topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
                 if topics:
                     minutes.topics = topics
@@ -130,6 +131,7 @@ class MinutesSpider(SpiderTemplate):
                 cleaned_speech = clean_speech(speech_rec['speech'])
                 full_text += cleaned_speech
                 speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
+                speech.ndl_url = speech_rec['speechURL']
                 speech.speaker_name = speaker
                 if speaker in speaker2member:
                     speech.member_id = speaker2member[speaker].id  # only for link
@@ -167,11 +169,6 @@ class MinutesSpider(SpiderTemplate):
                 'date': meeting_rec['date']
             }))
 
-        for bill_action in bill_action_lst:
-            url = build_url(bill_action._url, UrlTitle.HONBUN, self.domain)
-            url.to_id = bill_action.id
-            url_lst.append(url)
-
         return minutes_lst, minutes_text_lst, activity_lst, speech_lst, speech_text_lst, bill_action_lst, url_lst
 
     @staticmethod
@@ -198,7 +195,6 @@ class MinutesSpider(SpiderTemplate):
                 for bill_action_type in bill_action_types:
                     if bill_action_type not in prev_bill_action_types[current_topic_id]:
                         bill_action = build_bill_action(current_topic_id, minutes.id, bill_action_type)
-                        bill_action._url = speech_rec['speechURL']  # to build URL object later
                         bill_action.speech_id = speech.id  # only for link
                         bill_action_lst.append(bill_action)
                         prev_bill_action_types[current_topic_id].add(bill_action_type)
