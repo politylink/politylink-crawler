@@ -190,18 +190,17 @@ class MinutesSpider(SpiderTemplate):
                 minutes_bill_id2names[topic_id] = bill_id2names[topic_id]
 
         current_topic_id = None
-        current_action_types = []
+        prev_bill_action_types = defaultdict(set)  # key: bill_id, value: set of action types
         for speech_rec in moderator_recs:
             if any(topic in speech_rec['speech'] for topic in
                    minutes.topics + list(minutes_bill_id2names.values())):
                 current_topic_id = extract_topic_id(speech_rec['speech'], minutes_bill_id2names)
-                current_action_types = []
             bill_action_types = extract_bill_action_types(speech_rec['speech'])
             if current_topic_id and bill_action_types:
                 for bill_action_type in bill_action_types:
-                    if bill_action_type not in current_action_types:
+                    if bill_action_type not in prev_bill_action_types[current_topic_id]:
                         bill_action = build_bill_action(current_topic_id, minutes.id, bill_action_type)
                         bill_action._url = speech_rec['speechURL']  # to build URL object later
                         bill_action_lst.append(bill_action)
-                        current_action_types.append(bill_action_type)
+                        prev_bill_action_types[current_topic_id].add(bill_action_type)
         return bill_action_lst
