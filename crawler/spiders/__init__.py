@@ -59,12 +59,12 @@ class SpiderTemplate(scrapy.Spider):
 
     def link_bill_action(self, bill_action_lst):
         """
-        link BillAction to Bill and Minutes
+        link BillAction to Bill, Minutes, and Speech
         """
 
         from_ids, to_ids = [], []
         for bill_action in bill_action_lst:
-            for id_field in ['bill_id', 'minutes_id']:
+            for id_field in ['bill_id', 'minutes_id', 'speech_id']:
                 if hasattr(bill_action, id_field):
                     from_ids.append(bill_action.id)
                     to_ids.append(getattr(bill_action, id_field))
