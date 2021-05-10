@@ -183,19 +183,20 @@ class MinutesSpider(SpiderTemplate):
             if topic_id in bill_id2names.keys():
                 minutes_bill_id2names[topic_id] = bill_id2names[topic_id]
 
-        current_topic_id = None
+        current_topic_ids = None
         prev_bill_action_types = defaultdict(set)  # key: bill_id, value: set of action types
         for speech_rec in moderator_recs:
             speech = build_speech(minutes.id, int(speech_rec['speechOrder']))
             if any(topic in speech_rec['speech'] for topic in
                    minutes.topics + list(minutes_bill_id2names.values())):
-                current_topic_id = extract_topic_id(speech_rec['speech'], minutes_bill_id2names)
+                current_topic_ids = extract_topic_id(speech_rec['speech'], minutes_bill_id2names)
             bill_action_types = extract_bill_action_types(speech_rec['speech'])
-            if current_topic_id and bill_action_types:
-                for bill_action_type in bill_action_types:
-                    if bill_action_type not in prev_bill_action_types[current_topic_id]:
-                        bill_action = build_bill_action(current_topic_id, minutes.id, bill_action_type)
-                        bill_action.speech_id = speech.id  # only for link
-                        bill_action_lst.append(bill_action)
-                        prev_bill_action_types[current_topic_id].add(bill_action_type)
+            if current_topic_ids and bill_action_types:
+                for current_topic_id in current_topic_ids:
+                    for bill_action_type in bill_action_types:
+                        if bill_action_type not in prev_bill_action_types[current_topic_id]:
+                            bill_action = build_bill_action(current_topic_id, minutes.id, bill_action_type)
+                            bill_action.speech_id = speech.id  # only for link
+                            bill_action_lst.append(bill_action)
+                            prev_bill_action_types[current_topic_id].add(bill_action_type)
         return bill_action_lst

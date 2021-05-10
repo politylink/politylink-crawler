@@ -226,25 +226,35 @@ def extract_topic_id(speech, bill_id2names):
             topic_ids.append(bill_id)
     if len(topic_ids) > 1:
         LOGGER.warning(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
-    return topic_ids[0] if len(topic_ids) == 1 else None
+    return topic_ids if len(topic_ids) > 0 else None
 
 
 def extract_bill_action_types(speech):
+    def is_bill_action_type(in_words, not_in_words=None):
+        if not_in_words is None:
+            not_in_words = []
+        is_type = False
+        for w in in_words:
+            is_type = is_type or (w in speech)
+        for w in not_in_words:
+            is_type = is_type and (w not in speech)
+        return is_type
+
     action_lst = []
-    if '説明' in speech and '省略' not in speech and '終わり' not in speech:
-        if '修正案' in speech:
+    if is_bill_action_type(['説明'], ['省略', '終わり', '趣旨説明は既に聴取']):
+        if is_bill_action_type(['修正案']):
             action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
-        elif '附帯決議' in speech:
+        elif is_bill_action_type(['附帯決議']):
             action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
-        elif '趣旨の説明' in speech or '趣旨説明' in speech:
+        elif is_bill_action_type(['趣旨の説明', '趣旨説明']):
             action_lst.append(BillActionType.BILL_EXPLANATION)
-    if '質疑' in speech:
+    if is_bill_action_type(['質疑']):
         action_lst.append(BillActionType.QUESTION)
-    if '討論' in speech:
+    if is_bill_action_type(['討論']):
         action_lst.append(BillActionType.DEBATE)
-    if '採決' in speech:
+    if is_bill_action_type(['採決']):
         action_lst.append(BillActionType.VOTE)
-    if '委員長の報告' in speech:
+    if is_bill_action_type(['委員長の報告']):
         action_lst.append(BillActionType.REPORT)
     return action_lst
 
@@ -255,7 +265,11 @@ def clean_speech(speech):
 
 def is_moderator(speech):
     speaker = speech.split()[0]
-    return '議長' in speaker or '委員長' in speaker
+    moderators = ['議長', '委員長', '会長', '主査']
+    ret = False
+    for m in moderators:
+        ret = ret or m in speaker
+    return ret
 
 
 def strip_join(str_list, sep=''):
