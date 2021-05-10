@@ -219,42 +219,39 @@ def clean_topic(topic):
     return topic
 
 
-def extract_topic_id(speech, bill_id2names):
+def extract_topic_ids(speech, bill_id2names):
     topic_ids = []
     for bill_id, bill_name in bill_id2names.items():
         if bill_name in speech:
             topic_ids.append(bill_id)
     if len(topic_ids) > 1:
         LOGGER.warning(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
-    return topic_ids if len(topic_ids) > 0 else None
+    return topic_ids
 
 
 def extract_bill_action_types(speech):
-    def is_bill_action_type(in_words, not_in_words=None):
-        if not_in_words is None:
-            not_in_words = []
-        is_type = False
-        for w in in_words:
-            is_type = is_type or (w in speech)
-        for w in not_in_words:
-            is_type = is_type and (w not in speech)
-        return is_type
+    def speech_contains(allow_list, block_list=None):
+        if block_list is None:
+            block_list = []
+        has_allow_word = any(w in speech for w in allow_list)
+        has_block_word = any(w in speech for w in block_list)
+        return has_allow_word and not has_block_word
 
     action_lst = []
-    if is_bill_action_type(['説明'], ['省略', '終わり', '趣旨説明は既に聴取']):
-        if is_bill_action_type(['修正案']):
+    if speech_contains(['説明'], ['省略', '終わり', '既に聴取']):
+        if speech_contains(['修正案']):
             action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
-        elif is_bill_action_type(['附帯決議']):
+        elif speech_contains(['附帯決議']):
             action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
-        elif is_bill_action_type(['趣旨の説明', '趣旨説明']):
+        elif speech_contains(['趣旨の説明', '趣旨説明']):
             action_lst.append(BillActionType.BILL_EXPLANATION)
-    if is_bill_action_type(['質疑']):
+    if speech_contains(['質疑']):
         action_lst.append(BillActionType.QUESTION)
-    if is_bill_action_type(['討論']):
+    if speech_contains(['討論']):
         action_lst.append(BillActionType.DEBATE)
-    if is_bill_action_type(['採決']):
+    if speech_contains(['採決']):
         action_lst.append(BillActionType.VOTE)
-    if is_bill_action_type(['委員長の報告']):
+    if speech_contains(['委員長の報告']):
         action_lst.append(BillActionType.REPORT)
     return action_lst
 
@@ -266,10 +263,7 @@ def clean_speech(speech):
 def is_moderator(speech):
     speaker = speech.split()[0]
     moderators = ['議長', '委員長', '会長', '主査']
-    ret = False
-    for m in moderators:
-        ret = ret or m in speaker
-    return ret
+    return any([m in speaker for m in moderators])
 
 
 def strip_join(str_list, sep=''):
