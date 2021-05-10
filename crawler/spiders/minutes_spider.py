@@ -183,7 +183,7 @@ class MinutesSpider(SpiderTemplate):
             if topic_id in bill_id2names.keys():
                 minutes_bill_id2names[topic_id] = bill_id2names[topic_id]
 
-        current_topic_ids = None
+        current_topic_ids = list()
         prev_bill_action_types = defaultdict(set)  # key: bill_id, value: set of action types
         for speech_rec in moderator_recs:
             speech = build_speech(minutes.id, int(speech_rec['speechOrder']))

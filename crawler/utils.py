@@ -225,7 +225,7 @@ def extract_topic_ids(speech, bill_id2names):
         if bill_name in speech:
             topic_ids.append(bill_id)
     if len(topic_ids) > 1:
-        LOGGER.warning(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
+        LOGGER.debug(f'found multiple topics: speech={speech}, topic_ids={topic_ids}')
     return topic_ids
 
 
