@@ -1,5 +1,7 @@
+import pytest
+
 from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech, \
-    extract_bill_action_types
+    extract_bill_action_types, build_bill_text
 from politylink.graphql.schema import BillActionType
 
 
@@ -29,3 +31,28 @@ def test_clean_speech():
 def test_extract_bill_action_types():
     assert [BillActionType.QUESTION] == extract_bill_action_types('これより質疑に入ります。')
     assert [] == extract_bill_action_types('本案の趣旨の説明につきましては、これを省略します')
+
+
+def test_build_bill_text():
+    texts = [
+        '犬法の一部を次のように改正する。',
+        '「芝犬」を「柴犬」に改める。',
+        '附 則',
+        'この法律は、別に法律で定める日から施行する。',
+        '理 由',
+        '誤字を修正するため。'
+    ]
+
+    bill_text = build_bill_text('Bill:1', texts)
+    assert bill_text.id == 'Bill:1'
+    assert bill_text.body == '犬法の一部を次のように改正する。「芝犬」を「柴犬」に改める。'
+    assert bill_text.supplement == 'この法律は、別に法律で定める日から施行する。'
+    assert bill_text.reason == '誤字を修正するため。'
+
+
+def test_build_bill_text_fail():
+    texts = [
+        'ワンワンワン'
+    ]
+    with pytest.raises(ValueError):
+        build_bill_text('Bill:1', texts)

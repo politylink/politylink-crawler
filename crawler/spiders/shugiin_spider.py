@@ -1,7 +1,9 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory
+from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
+    build_bill_text
+from politylink.elasticsearch.client import OpType
 from politylink.graphql.schema import Bill, Url
 
 LOGGER = getLogger(__name__)
@@ -62,17 +64,28 @@ class ShugiinSpider(SpiderTemplate):
         法案ページから議案の理由を取得し、GraphQLに保存する
         """
 
+        def extract_clean_text(paragraph):
+            text = ''.join(paragraph.xpath('.//text()').getall())
+            return ' '.join(text.split()).strip()  # standardize delimiter
+
+        bill_id = response.meta['bill_id']
         paragraphs = response.xpath('//div[@id="mainlayout"]/p')
         if not paragraphs:
             paragraphs = response.xpath('//div[@id="mainlayout"]/div[@class="WordSection1"]/p[position()>3]')
-        text = ''.join([''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs])
-        reason_tag = '理　由'
-        if reason_tag in text:
-            bill = Bill(None)
-            bill.id = response.meta['bill_id']
-            bill.reason = text[text.find(reason_tag) + len(reason_tag):].strip()
-            self.gql_client.merge(bill)
-            LOGGER.info(f'merged reason for {bill.id}')
+        texts = [extract_clean_text(p) for p in paragraphs]
+        try:
+            bill_text = build_bill_text(bill_id, texts)
+        except ValueError as e:
+            LOGGER.warning(e)
+            return
+        self.es_client.index(bill_text, op_type=OpType.MERGE)
+        LOGGER.info(f'merged BillText in Elasticsearch for {bill_id}')
+
+        bill = Bill(None)
+        bill.id = bill_id
+        bill.reason = bill_text.reason
+        self.gql_client.merge(bill)
+        LOGGER.info(f'merged reason in GraphQL for {bill_id} ')
 
     @staticmethod
     def scrape_bills_and_urls(response):
