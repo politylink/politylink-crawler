@@ -64,11 +64,15 @@ class ShugiinSpider(SpiderTemplate):
         法案ページから議案の理由を取得し、GraphQLに保存する
         """
 
+        def extract_clean_text(paragraph):
+            text = ''.join(paragraph.xpath('.//text()').getall())
+            return ' '.join(text.split()).strip()  # standardize delimiter
+
         bill_id = response.meta['bill_id']
         paragraphs = response.xpath('//div[@id="mainlayout"]/p')
         if not paragraphs:
             paragraphs = response.xpath('//div[@id="mainlayout"]/div[@class="WordSection1"]/p[position()>3]')
-        texts = [''.join(p.xpath('.//text()').getall()).strip() for p in paragraphs]
+        texts = [extract_clean_text(p) for p in paragraphs]
         try:
             bill_text = build_bill_text(bill_id, texts)
         except ValueError as e:

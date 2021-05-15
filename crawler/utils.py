@@ -317,8 +317,8 @@ def deduplicate(items):
 
 
 def build_bill_text(bill_id, texts):
-    supplement_idx = texts.index('附　則')
-    reason_idx = texts.index('理　由')
+    supplement_idx = texts.index('附 則')
+    reason_idx = texts.index('理 由')
     if supplement_idx > reason_idx:
         raise ValueError(f'supplement_idx({supplement_idx}) > reason_idx=({reason_idx})')
     bill_text = BillText(None)
