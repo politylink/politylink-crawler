@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from enum import Enum
 from logging import getLogger
 from urllib.parse import urljoin
@@ -179,16 +180,19 @@ def extract_topics(first_speech):
             speech_lst.append(first_speech[schedule_idx.end():start_idx])
 
         # 明示的に記載されて案件を取得
-        speech_lst.append(first_speech[end_idx:])  # start_idxより後の文章を取得
+        speech_lst.append(first_speech[end_idx:])  # end_idxより後の文章を取得
 
         # 改行を削除
         format_speech = ''
         for speech in speech_lst:
             if re.search(r'\r\n○', speech) is not None:
-                speech = speech.replace('\r\n\u3000', '')
-                speech = speech.replace('\r\n○', '\r\n\u3000')
+                speech = speech.replace('\r\n\u3000', '')  # トピック名の途中の\r\n\u3000を削除
+                speech = speech.replace('\r\n○', '\u3000')  # \r\n○はトピック名の区切りとして\u3000に置換
             else:
-                speech = speech.replace('\r\n\u3000\u3000', '')
+                speech = speech.replace('\r\n\u3000\u3000', '')  # \r\n○がない場合は、\r\n\u3000はトピック名の区切りなので削除しない
+
+            speech = speech.replace('、', '\u3000')  # 読点はトピック名の区切りとして\u3000に置換
+            speech = speech.replace('）及び', '）\u3000')  # "）及び"はトピック名の区切りとして"及び"を削除し\u3000に置換
 
             format_speech += speech
         return format_speech
@@ -196,14 +200,10 @@ def extract_topics(first_speech):
     topics = []
     try:
         first_speech = format_first_speech(first_speech)
-        topic_pattern = re.compile(r'\w+\S+(法律案|決議案|議決案|調査|使用(総)?調書|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)')
+        topic_pattern = re.compile(r'\w+\S+(法律案|法案|決議案|議決案|調査|使用(総)?調書|特別措置法案|予算|互選|件|決算書|計算書|請願|質疑)(（.+?）)?')
         for m in topic_pattern.finditer(first_speech):
             topic = m.group()
             topic = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic)
-            # remove brackets and text
-            topic = re.sub(r'(\(|（)[^)]*(\)|）)', '', topic)
-            # remove insufficient brackets and text
-            topic = re.sub(r'(\(|（)[^)]*', '', topic)
             # remove start and end spaces
             topic = topic.strip()
             if topic not in topics:
@@ -304,12 +304,41 @@ def parse_name_str(name_str):
 
 
 def extract_bill_number_or_none(text):
+    def kansuji2arabic(s):
+        kansuji = '一二三四五六七八九'
+        kansuji_digit = '十百千'
+        s_arabic = [s[0]]
+        for i in range(1, len(s)):
+            if s[i] in kansuji:
+                s_arabic.append(str(int(unicodedata.numeric(s[i]))))
+            elif s[i] in kansuji_digit:
+                if s[i - 1] not in kansuji and s[i - 1] not in kansuji_digit:
+                    s_arabic.append('1')
+            else:
+                s_arabic.append(s[i])
+        return ''.join(s_arabic)
+
     pattern = r'第?([0-9]+)回?(国会)?(閣|衆|参|)法?第?([0-9]+)号?'
-    match = re.search(pattern, text)
+    match = re.search(pattern, kansuji2arabic(text))
     if not match:
         return None
     bill_number = '第{}回国会{}法第{}号'.format(match.group(1), match.group(3), match.group(4))
     return bill_number
+
+
+def extract_category_or_none(text):
+    pattern = r'(内閣|衆議院|参議院)提出|(閣法|衆法|参法)'
+    match = re.search(pattern, text)
+    if not match:
+        return None
+    if match.group() == '内閣' or match.group() == '閣法':
+        return 'KAKUHOU'
+    elif match.group() == '衆議院' or match.group() == '衆法':
+        return 'SHUHOU'
+    elif match.group() == '参議院' or match.group() == '参法':
+        return 'SANHOU'
+    else:
+        return None
 
 
 def deduplicate(items):

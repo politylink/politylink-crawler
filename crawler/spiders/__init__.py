@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 
 import scrapy
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
-    build_minutes_activity, extract_bill_number_or_none
+    build_minutes_activity, extract_bill_number_or_none, extract_category_or_none
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
@@ -126,9 +126,12 @@ class SpiderTemplate(scrapy.Spider):
     def get_topic_ids(self, topics):
         def get_topic_id(topic):
             maybe_bill_number = extract_bill_number_or_none(topic)
-            query = maybe_bill_number if maybe_bill_number else topic
+            maybe_category = extract_category_or_none(topic)
             try:
-                bill = self.bill_finder.find_one(query)
+                if maybe_bill_number:
+                    bill = self.bill_finder.find_one(maybe_bill_number)
+                else:
+                    bill = self.bill_finder.find_one(topic, category=maybe_category)
                 return bill.id
             except ValueError as e:
                 LOGGER.debug(e)  # this is expected when topic does not include bill
