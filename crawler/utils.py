@@ -331,11 +331,11 @@ def extract_category_or_none(text):
     match = re.search(pattern, text)
     if not match:
         return None
-    if match.group() == '内閣' or match.group() == '閣法':
+    if match.group() == '内閣提出' or match.group() == '閣法':
         return 'KAKUHOU'
-    elif match.group() == '衆議院' or match.group() == '衆法':
+    elif match.group() == '衆議院提出' or match.group() == '衆法':
         return 'SHUHOU'
-    elif match.group() == '参議院' or match.group() == '参法':
+    elif match.group() == '参議院提出' or match.group() == '参法':
         return 'SANHOU'
     else:
         return None
