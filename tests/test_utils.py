@@ -1,7 +1,7 @@
 import pytest
 
 from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech, \
-    extract_bill_action_types, build_bill_text
+    extract_bill_action_types, build_bill_text, extract_topics
 from politylink.graphql.schema import BillActionType
 
 
@@ -56,3 +56,43 @@ def test_build_bill_text_fail():
     ]
     with pytest.raises(ValueError):
         build_bill_text('Bill:1', texts)
+
+
+def test_extract_topics():
+    # https://kokkai.ndl.go.jp/txt/120405254X02520210427/0
+    text = """
+    （省略）
+    　　　　―――――――――――――
+    ○本日の会議に付した案件
+    　日程第一　猫と犬の関係について意見を求めるの件
+    　日程第二　猫法を改正する法律案（内閣提出）
+    　日程第三　犬を改正する法律案（内閣提出）
+    　愛犬法（内閣提出）の趣旨説明及び質疑
+    　　　　午後一時二分開議
+    """
+
+    expected = [
+        '猫と犬の関係について意見を求めるの件',
+        '猫法を改正する法律案（内閣提出）',
+        '犬を改正する法律案（内閣提出）',
+        '愛犬法（内閣提出）の趣旨説明及び質疑'
+    ]
+    assert extract_topics(text) == expected
+
+    # https://kokkai.ndl.go.jp/txt/120115007X01520200617/0
+    text = """
+    （省略）
+　　　　─────────────
+    　　本日の会議に付した案件
+    ○猫と犬に関する請願（第一号外一件
+    　）
+    ○フェレット祭りの中止に関する請願（第二号外
+    　三件）
+    　　　　─────────────
+    """
+
+    expected = [
+        '猫と犬に関する請願（第一号外一件）'
+        'フェレット祭りの中止に関する請願（第二号外三件）'
+    ]
+    # assert extract_topics(text) == expected  # TODO: fix this
