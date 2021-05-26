@@ -168,6 +168,48 @@ def to_date_str(dt):
     return '{:02d}-{:02d}-{:02d}'.format(dt.year, dt.month, dt.day)
 
 
+def extract_minutes_schedule(first_speech, bullets=None, blocks=None):
+    """
+    a.k.a format_first_speech
+
+    :param first_speech: 会議録の最初の発言（=会議録情報）
+    :param bullets: 議題の先頭文字の集合
+    :param blocks: セクション区切り文字の集合
+
+    :return: 会議に付された案件のリスト
+    """
+
+    bullets = bullets or set()
+    blocks = blocks or set()
+
+    is_schedule = False
+    schedule_lines = list()
+    buffer = ''
+    for line in first_speech.split('\n'):
+        line = line.strip()
+        if contains_word(line, ['本日の会議に付した案件', '本日の公聴会で意見を聞いた案件']):
+            is_schedule = True
+            schedule_lines = list()  # 複数回ヒットする場合は最後を優先する
+            continue
+        if line and is_schedule:
+            if line[0] in blocks:
+                is_schedule = False
+                continue
+
+            if bullets:  # トピック内の改行が存在する可能性あり
+                if line[0] in bullets:
+                    if buffer:
+                        schedule_lines.append(buffer)
+                    buffer = line[1:]
+                else:
+                    buffer += line
+            else:  # トピック内の改行は存在しない
+                schedule_lines.append(line)
+    if buffer:
+        schedule_lines.append(buffer)
+    return schedule_lines
+
+
 def extract_topics(first_speech):
     def format_first_speech(first_speech):
         start_idx, end_idx = re.search(r'○?本日の会議に付した案件|○?本日の公聴会で意見を聞いた案件', first_speech).span()
@@ -230,29 +272,30 @@ def extract_topic_ids(speech, bill_id2names):
     return topic_ids
 
 
-def extract_bill_action_types(speech):
-    def speech_contains(allow_list, block_list=None):
-        if block_list is None:
-            block_list = []
-        has_allow_word = any(w in speech for w in allow_list)
-        has_block_word = any(w in speech for w in block_list)
-        return has_allow_word and not has_block_word
+def contains_word(text, allow_list=None, block_list=None):
+    allow_list = allow_list or list()
+    block_list = block_list or list()
+    has_allow_word = any(w in text for w in allow_list)
+    has_block_word = any(w in text for w in block_list)
+    return has_allow_word and not has_block_word
 
+
+def extract_bill_action_types(speech):
     action_lst = []
-    if speech_contains(['説明'], ['省略', '終わり', '既に聴取']):
-        if speech_contains(['修正案']):
+    if contains_word(speech, ['説明'], ['省略', '終わり', '既に聴取']):
+        if contains_word(speech, ['修正案']):
             action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
-        elif speech_contains(['附帯決議']):
+        elif contains_word(speech, ['附帯決議']):
             action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
-        elif speech_contains(['趣旨の説明', '趣旨説明']):
+        elif contains_word(speech, ['趣旨の説明', '趣旨説明']):
             action_lst.append(BillActionType.BILL_EXPLANATION)
-    if speech_contains(['質疑']):
+    if contains_word(speech, ['質疑']):
         action_lst.append(BillActionType.QUESTION)
-    if speech_contains(['討論']):
+    if contains_word(speech, ['討論']):
         action_lst.append(BillActionType.DEBATE)
-    if speech_contains(['採決']):
+    if contains_word(speech, ['採決']):
         action_lst.append(BillActionType.VOTE)
-    if speech_contains(['委員長の報告']):
+    if contains_word(speech, ['委員長の報告']):
         action_lst.append(BillActionType.REPORT)
     return action_lst
 
