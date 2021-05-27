@@ -170,9 +170,10 @@ def to_date_str(dt):
 
 def extract_minutes_schedule(first_speech, bullets=None, blocks=None):
     """
+    会議録の最初の発言（=会議録情報）からその会議に付された案件のリストを抽出する
     a.k.a format_first_speech
 
-    :param first_speech: 会議録の最初の発言（=会議録情報）
+    :param first_speech: 会議録の最初の発言
     :param bullets: 議題の先頭文字の集合
     :param blocks: セクション区切り文字の集合
 
@@ -208,6 +209,33 @@ def extract_minutes_schedule(first_speech, bullets=None, blocks=None):
     if buffer:
         schedule_lines.append(buffer)
     return schedule_lines
+
+
+def extract_topics_from_line(line):
+    line = re.sub(r'^第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', line)
+    line = line.replace('、', '\u3000')  # 読点はトピック名の区切りとして\u3000に置換
+    line = line.replace('）及び', '）\u3000')  # "）及び"はトピック名の区切りとして"及び"を削除し\u3000に置換
+
+    topic_words = ['法律案', '法案', '決議案', '議決案', '調査', '調書', '協定', '承認', '予算', '互選', '件', '決算書', '計算書', '請願', '質疑']
+    topics = []
+    for maybe_topic in line.split():
+        if contains_word(maybe_topic, topic_words):
+            topics.append(maybe_topic)
+    return topics
+
+
+def extract_topics_v2(first_speech, house):
+    if house == '衆議院':
+        minutes_schedule = extract_minutes_schedule(first_speech, bullets={}, blocks={'―', '◇'})
+    elif house == '参議院':
+        minutes_schedule = extract_minutes_schedule(first_speech, bullets={'○'}, blocks={'─'})
+    else:
+        raise ValueError(f'unknown house: {house}')
+
+    topics = []
+    for line in minutes_schedule:
+        topics += extract_topics_from_line(line)
+    return topics
 
 
 def extract_topics(first_speech):

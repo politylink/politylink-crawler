@@ -1,7 +1,7 @@
 import pytest
 
 from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech, \
-    extract_bill_action_types, build_bill_text, extract_topics, extract_minutes_schedule
+    extract_bill_action_types, build_bill_text, extract_minutes_schedule, extract_topics_from_line, extract_topics_v2
 from politylink.graphql.schema import BillActionType
 
 
@@ -58,6 +58,14 @@ def test_build_bill_text_fail():
         build_bill_text('Bill:1', texts)
 
 
+def test_extract_topics_from_line():
+    assert extract_topics_from_line('日程第一　猫と犬との間の協定について承認を求めるの件') \
+           == ['猫と犬との間の協定について承認を求めるの件']
+    assert extract_topics_from_line('日程第二　猫法を改正する法律案（内閣提出）及び愛猫法（内閣提出）の趣旨説明及び質疑') \
+           == ['猫法を改正する法律案（内閣提出）', '愛猫法（内閣提出）の趣旨説明及び質疑']
+    assert extract_topics_from_line('午後一時二分開議') == []
+
+
 def test_extract_topics_shugiin():
     # https://kokkai.ndl.go.jp/txt/120405254X02520210427/0
     first_speech = """
@@ -65,7 +73,7 @@ def test_extract_topics_shugiin():
     　　　　―――――――――――――
     ○本日の会議に付した案件
     　日程第一　猫と犬との間の協定について承認を求めるの件
-    　日程第二　猫法を改正する法律案（内閣提出）及び愛猫法
+    　日程第二　猫法を改正する法律案（内閣提出）及び愛猫法（内閣提出）の趣旨説明及び質疑
     　日程第三　犬法を改正する法律案（内閣提出）
     　愛犬法（内閣提出）の趣旨説明及び質疑
     　　　　午後一時二分開議
@@ -73,7 +81,7 @@ def test_extract_topics_shugiin():
 
     expected_minutes_schedule = [
         '日程第一　猫と犬との間の協定について承認を求めるの件',
-        '日程第二　猫法を改正する法律案（内閣提出）及び愛猫法',
+        '日程第二　猫法を改正する法律案（内閣提出）及び愛猫法（内閣提出）の趣旨説明及び質疑',
         '日程第三　犬法を改正する法律案（内閣提出）',
         '愛犬法（内閣提出）の趣旨説明及び質疑',
         '午後一時二分開議'  # should be removed as non-topic
@@ -82,13 +90,13 @@ def test_extract_topics_shugiin():
     expected_topics = [
         '猫と犬との間の協定について承認を求めるの件',
         '猫法を改正する法律案（内閣提出）',
-        '愛猫法',
-        '犬を改正する法律案（内閣提出）',
+        '愛猫法（内閣提出）の趣旨説明及び質疑',
+        '犬法を改正する法律案（内閣提出）',
         '愛犬法（内閣提出）の趣旨説明及び質疑'
     ]
 
-    assert extract_minutes_schedule(first_speech, bullets=None, blocks={'―', '◇'}) == expected_minutes_schedule
-    # assert extract_topics(first_speech) == expected_topics  # TODO: fix this
+    assert extract_minutes_schedule(first_speech, bullets={}, blocks={'―', '◇'}) == expected_minutes_schedule
+    assert extract_topics_v2(first_speech, '衆議院') == expected_topics
 
 
 def test_extract_topics_sangiin():
@@ -114,4 +122,4 @@ def test_extract_topics_sangiin():
         'フェレット祭りの中止に関する請願（第二号外三件）'
     ]
     assert extract_minutes_schedule(first_speech, bullets={'○'}, blocks={'─'}) == expected_minutes_schedule
-    # assert extract_topics(first_speech) == expected_topics  # TODO: fix this
+    assert extract_topics_v2(first_speech, '参議院') == expected_topics
