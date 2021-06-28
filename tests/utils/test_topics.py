@@ -5,14 +5,16 @@ def test_clean_topic():
     assert clean_topic('日程第一　法律案') == '法律案'
     assert clean_topic('法律案') == '法律案'
     assert clean_topic('一、 法律案') == '法律案'
+    assert clean_topic('○法律案') == '法律案'
 
 
 def test_split_topic():
     assert split_topic('法律案') == ['法律案']
-    assert split_topic('法律案1、法律案2、法律案3') == ['法律案1', '法律案2', '法律案3']
-    assert split_topic('法律案1（内閣提出）及び法律案2') == ['法律案1（内閣提出）', '法律案2']
-    assert split_topic('犬及び猫に関する法律案') == ['犬及び猫に関する法律案']  # 法律案の途中の及びでは切らない
+    assert split_topic('法律案1（内閣提出）、法律案2（内閣提出）') == ['法律案1（内閣提出）', '法律案2（内閣提出）']
+    assert split_topic('法律案1（内閣提出）及び法律案2（内閣提出）') == ['法律案1（内閣提出）', '法律案2（内閣提出）']
+    assert split_topic('委員会1、委員会2') == ['委員会1、委員会2']  # ）の後ろではない読点では切らない
     assert split_topic('法律案（内閣提出、1号）') == ['法律案（内閣提出、1号）']  # （）に挟まれた読点では切らない
+    assert split_topic('犬及び猫に関する法律案（内閣提出）') == ['犬及び猫に関する法律案（内閣提出）']  # 法律案の途中の及びでは切らない
 
 
 def test_extract_topics_1():

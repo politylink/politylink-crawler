@@ -1,7 +1,7 @@
 import pytest
 
 from crawler.utils import parse_name_str, extract_bill_number_or_none, deduplicate, clean_speech, \
-    extract_bill_action_types, build_bill_text, get_offset
+    extract_bill_action_types, build_bill_text, get_offset, replace_kansuji_to_number, convert_kansuji_to_int
 from politylink.graphql.schema import BillActionType
 
 
@@ -62,3 +62,19 @@ def test_get_offset():
     assert get_offset('') == -1
     assert get_offset('   ') == -1
     assert get_offset('   こんにちは') == 3
+
+
+def test_convert_kansuji_to_int():
+    assert convert_kansuji_to_int('一〇') == 10
+    assert convert_kansuji_to_int('四二') == 42
+    assert convert_kansuji_to_int('百') == 100
+    assert convert_kansuji_to_int('百九十六') == 196
+    assert convert_kansuji_to_int('一九六') == 196
+    assert convert_kansuji_to_int('千二') == 1002
+    assert convert_kansuji_to_int('千十') == 1010
+    assert convert_kansuji_to_int('千十六') == 1016
+    assert convert_kansuji_to_int('千九十六') == 1096
+
+
+def test_replace_kansuji_to_number():
+    assert replace_kansuji_to_number('第百九十六回国会衆法第四二号') == '第196回国会衆法第42号'

@@ -1,3 +1,7 @@
+"""
+国会会議録からトピックを抽出するためのメソッドを定義する
+"""
+
 import re
 from logging import getLogger
 
@@ -27,13 +31,16 @@ def extract_topics(first_speech, clean=True, split=True):
     PARENT 1      // offset=0
         CHILD 11  //       =4
         CHILD 12  //       =4
-    PARENT 2      //       =0 (flush buffer)
+    PARENT 2      //       =0 (flush buffer, update parent offset)
         CHILD 21  //       =4
-        BLOCK     //       =4 (flush buffer)
+        -------   //       =4 (flush buffer)
+    PARENT 3      //       =0 (update parent offset)
+    ""            //       =-1 (flush buffer)
 
     (After)
     PARENT1 + CHILD11 + CHILD12
     PARENT2 + CHILD21
+    PARENT3
     """
 
     lines = first_speech.split('\n')
@@ -78,16 +85,17 @@ def extract_topics(first_speech, clean=True, split=True):
 
 
 def clean_topic(topic):
-    return re.sub(r'^(日程)?第?(一|二|三|四|五|六|七|八|九|十)+(　|、)?', '', topic).strip()
+    return re.sub(r'^○?(日程)?第?(一|二|三|四|五|六|七|八|九|十)*、?', '', topic).strip()
 
 
 def split_topic(topic):
-    # 法律案の後の「及び」を読点に変換
+    # ）の後の「及び」を読点に変換
     topic = topic.replace('）及び', '）、')
-    # （）に含まれていない読点で分割
+    # ）の後の（）に含まれていない読点で分割
     # https://stackoverflow.com/questions/2785755/how-to-split-but-ignore-separators-in-quoted-strings-in-python
-    pattern = '、(?=(?:[^（）]|（[^（）]*）)*$)'
-    return re.split(pattern, topic)
+    pattern = '）、(?=(?:[^（）]|（[^（）]*）)*$)'
+    topics = re.split(pattern, topic)
+    return [x + '）' for x in topics[:-1]] + [topics[-1]]  # ）を復元
 
 
 def clean_committee_topic(topic):
