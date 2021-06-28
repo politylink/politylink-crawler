@@ -1,12 +1,18 @@
-from crawler.utils import extract_topics_from_line, extract_topics_v3
+from crawler.utils import extract_topics, clean_topic, split_topic
 
 
-def test_extract_topics_from_line():
-    assert extract_topics_from_line('日程第一　猫と犬との間の協定について承認を求めるの件') \
-           == ['猫と犬との間の協定について承認を求めるの件']
-    assert extract_topics_from_line('日程第二　猫法を改正する法律案（内閣提出）及び愛猫法（内閣提出）の趣旨説明及び質疑') \
-           == ['猫法を改正する法律案（内閣提出）', '愛猫法（内閣提出）の趣旨説明及び質疑']
-    assert extract_topics_from_line('午後一時二分開議') == []
+def test_clean_topic():
+    assert clean_topic('日程第一　法律案') == '法律案'
+    assert clean_topic('法律案') == '法律案'
+    assert clean_topic('一、 法律案') == '法律案'
+
+
+def test_split_topic():
+    assert split_topic('法律案') == ['法律案']
+    assert split_topic('法律案1、法律案2、法律案3') == ['法律案1', '法律案2', '法律案3']
+    assert split_topic('法律案1（内閣提出）及び法律案2') == ['法律案1（内閣提出）', '法律案2']
+    assert split_topic('犬及び猫に関する法律案') == ['犬及び猫に関する法律案']  # 法律案の途中の及びでは切らない
+    assert split_topic('法律案（内閣提出、1号）') == ['法律案（内閣提出、1号）']  # （）に挟まれた読点では切らない
 
 
 def test_extract_topics_1():
@@ -27,19 +33,19 @@ def test_extract_topics_1():
 
     expected_topics = [
         '原子力発電施設等立地地域の振興に関する特別措置法の一部を改正する法律案（内閣提出）',
-        'デジタル社会形成基本法案（内閣提出）、デジタル庁設置法案（内閣提出）、デジタル社会の形成を図るための関係法律の整備に関する法律案（内閣提出）、公的給付の支給等の迅速かつ確実な実施のための預貯金口座の登録等に関する法律案（内閣提出）及び預貯金者の意思に基づく個人番号の利用による預貯金口座の管理等に関する法律案（内閣提出）の趣旨説明及び質疑',
-    ]
-    assert extract_topics_v3(first_speech) == expected_topics
-
-    expected_topics_split = [
-        '原子力発電施設等立地地域の振興に関する特別措置法の一部を改正する法律案（内閣提出）',
         'デジタル社会形成基本法案（内閣提出）',
         'デジタル庁設置法案（内閣提出）',
         'デジタル社会の形成を図るための関係法律の整備に関する法律案（内閣提出）',
         '公的給付の支給等の迅速かつ確実な実施のための預貯金口座の登録等に関する法律案（内閣提出）',
         '預貯金者の意思に基づく個人番号の利用による預貯金口座の管理等に関する法律案（内閣提出）の趣旨説明及び質疑',
     ]
-    assert extract_topics_v3(first_speech, split=True) == expected_topics_split
+    assert extract_topics(first_speech) == expected_topics
+
+    expected_topics_no_split = [
+        '原子力発電施設等立地地域の振興に関する特別措置法の一部を改正する法律案（内閣提出）',
+        'デジタル社会形成基本法案（内閣提出）、デジタル庁設置法案（内閣提出）、デジタル社会の形成を図るための関係法律の整備に関する法律案（内閣提出）、公的給付の支給等の迅速かつ確実な実施のための預貯金口座の登録等に関する法律案（内閣提出）及び預貯金者の意思に基づく個人番号の利用による預貯金口座の管理等に関する法律案（内閣提出）の趣旨説明及び質疑',
+    ]
+    assert extract_topics(first_speech, split=False) == expected_topics_no_split
 
 
 def test_extract_topics_2():
@@ -57,7 +63,7 @@ def test_extract_topics_2():
         '日本国憲法の改正手続に関する法律の一部を改正する法律案（逢沢一郎君外五名提出、第百九十六回国会衆法第四二号）',
         '日本国憲法及び日本国憲法に密接に関連する基本法制に関する件（日本国憲法及び憲法改正国民投票法を巡る諸問題）',
     ]
-    assert extract_topics_v3(first_speech) == expected_topics
+    assert extract_topics(first_speech) == expected_topics
 
 
 def test_extract_topics_3():
@@ -77,7 +83,7 @@ def test_extract_topics_3():
         '公職選挙法の一部を改正する法律案（逢沢一郎君外九名提出、衆法第一六号）',
         '政治倫理の確立及び公職選挙法改正に関する件',
     ]
-    assert extract_topics_v3(first_speech) == expected_topics
+    assert extract_topics(first_speech) == expected_topics
 
 
 def test_extract_topics_4():
@@ -110,4 +116,4 @@ def test_extract_topics_4():
         '所得に対する租税に関する二重課税の除去並びに脱税及び租税回避の防止のための日本国とウルグアイ東方共和国との間の条約の締結について承認を求めるの件（衆議院送付）',
         '復興庁設置法等の一部を改正する法律案（趣旨説明）',
     ]
-    assert extract_topics_v3(first_speech) == expected_topics
+    assert extract_topics(first_speech) == expected_topics

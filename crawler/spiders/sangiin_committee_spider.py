@@ -2,7 +2,7 @@ import re
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, build_committee, clean_topic
+from crawler.utils import extract_text, build_committee, clean_committee_topic
 
 LOGGER = getLogger(__name__)
 
@@ -60,6 +60,6 @@ class SangiinCommitteeSpider(SpiderTemplate):
         for oul in div.css('ol, ul'):
             topics = []
             for li in oul.css('li'):
-                topics.append(clean_topic(extract_text(li)))
+                topics.append(clean_committee_topic(extract_text(li)))
             ret.append(topics)
         return ret
