@@ -5,7 +5,7 @@
 import re
 from logging import getLogger
 
-from crawler.utils.common import contains_word, get_offset, deduplicate
+from crawler.utils.common import contains_word, get_str_offset, deduplicate
 
 LOGGER = getLogger(__name__)
 
@@ -55,7 +55,7 @@ def extract_topics(first_speech, clean=True, split=True):
     buffer = ''
     parent_offset = 0
     for line in topic_lines + ['']:  # 最後にbufferを処理するための番兵
-        offset = get_offset(line)
+        offset = get_str_offset(line)
         line = line.strip()
 
         if not buffer:

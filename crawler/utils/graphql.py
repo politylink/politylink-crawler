@@ -6,7 +6,6 @@ from enum import Enum
 from logging import getLogger
 
 from crawler.utils.common import contains_word
-from politylink.elasticsearch.schema import BillText
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, Committee, News, Member, Diet, \
     Activity, BillAction, _Neo4jDateTimeInput, BillActionType
 from politylink.idgen import idgen
@@ -125,19 +124,6 @@ def build_bill_action(bill_id, minutes_id, bill_action_type):
     bill_action.type = bill_action_type
     bill_action.id = idgen(bill_action)
     return bill_action
-
-
-def build_bill_text(bill_id, texts):
-    supplement_idx = texts.index('附 則')
-    reason_idx = texts.index('理 由')
-    if supplement_idx > reason_idx:
-        raise ValueError(f'supplement_idx({supplement_idx}) > reason_idx=({reason_idx})')
-    bill_text = BillText(None)
-    bill_text.id = bill_id
-    bill_text.body = ''.join(texts[:supplement_idx])
-    bill_text.supplement = ''.join(texts[supplement_idx + 1:reason_idx])
-    bill_text.reason = ''.join(texts[reason_idx + 1:])
-    return bill_text
 
 
 def to_neo4j_datetime(dt):

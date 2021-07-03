@@ -102,15 +102,19 @@ def parse_name_str(name_str):
 
 def convert_kansuji_to_int(s):
     buffer = ''
-    sr = s[::-1]
+    sr = s[::-1]  # digitを後ろから変換する
     for i, si in enumerate(sr):
         if si in KANSUJI_DIGIT:
             zeros = KANSUJI_DIGIT.find(si) + 1
-            buffer += '〇' * (zeros - len(buffer))  # 〇で桁を揃える
+            if len(buffer) > zeros:
+                raise ValueError(f'too many numbers before "{si}": {s}')
+            buffer += '〇' * (zeros - len(buffer))  # 〇で桁を埋める
             if i == len(sr) - 1 or sr[i + 1] not in KANSUJI:
                 buffer += '一'
-        else:
+        elif si in KANSUJI:
             buffer += si
+        else:
+            raise ValueError(f'found non-kansuji "{si}": {s}')
     return int(''.join([str(int(unicodedata.numeric(x))) for x in buffer[::-1]]))
 
 
@@ -128,22 +132,21 @@ def extract_bill_number_or_none(text):
     return bill_number
 
 
-def extract_category_or_none(text):
+def extract_bill_category_or_none(text):
     if contains_word(text, ['内閣提出', '閣法']):
         return 'KAKUHOU'
     elif contains_word(text, ['衆議院提出', '衆法']):
         return 'SHUHOU'
     elif contains_word(text, ['参議院提出', '参法']):
         return 'SANHOU'
-    else:
-        return None
+    return None
 
 
 def deduplicate(items):
     return list(dict.fromkeys(items))
 
 
-def get_offset(s):
+def get_str_offset(s):
     for i, c in enumerate(s):
         if c not in {' ', '　'}:
             return i
