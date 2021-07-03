@@ -5,9 +5,8 @@ GraphQLインスタンスを生成するためのbuildメソッドを定義す�
 from enum import Enum
 from logging import getLogger
 
-from crawler.utils.common import contains_word
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, Committee, News, Member, Diet, \
-    Activity, BillAction, _Neo4jDateTimeInput, BillActionType
+    Activity, BillAction, _Neo4jDateTimeInput
 from politylink.idgen import idgen
 
 LOGGER = getLogger(__name__)
@@ -129,23 +128,3 @@ def build_bill_action(bill_id, minutes_id, bill_action_type):
 def to_neo4j_datetime(dt):
     return _Neo4jDateTimeInput(year=dt.year, month=dt.month, day=dt.day,
                                hour=dt.hour, minute=dt.minute, second=dt.second)
-
-
-def extract_bill_action_types(speech):
-    action_lst = []
-    if contains_word(speech, ['説明'], ['省略', '終わり', '既に聴取']):
-        if contains_word(speech, ['修正案']):
-            action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
-        elif contains_word(speech, ['附帯決議']):
-            action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
-        elif contains_word(speech, ['趣旨の説明', '趣旨説明']):
-            action_lst.append(BillActionType.BILL_EXPLANATION)
-    if contains_word(speech, ['質疑']):
-        action_lst.append(BillActionType.QUESTION)
-    if contains_word(speech, ['討論']):
-        action_lst.append(BillActionType.DEBATE)
-    if contains_word(speech, ['採決']):
-        action_lst.append(BillActionType.VOTE)
-    if contains_word(speech, ['委員長の報告']):
-        action_lst.append(BillActionType.REPORT)
-    return action_lst

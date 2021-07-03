@@ -23,6 +23,11 @@ def test_extract_bill_category_or_none():
     assert extract_bill_number_or_none('デジタル庁設置法案') is None
 
 
+def test_extract_bill_action_types():
+    assert extract_bill_action_types('これより質疑に入ります。') == [BillActionType.QUESTION]
+    assert extract_bill_action_types('本案の趣旨の説明につきましては、これを省略します') == []
+
+
 def test_deduplicate():
     assert deduplicate([]) == []
     assert deduplicate(['aaa', 'bbb', 'ccc', 'aaa', 'ddd', 'bbb']) == ['aaa', 'bbb', 'ccc', 'ddd']
@@ -32,11 +37,6 @@ def test_clean_speech():
     speech = '○議長（大島理森君）　各請願は委員長の報告を省略して採択するに御異議ありませんか。 　　　　〔「異議なし」と呼ぶ者あり〕'
     expected = '各請願は委員長の報告を省略して採択するに御異議ありませんか。〔「異議なし」と呼ぶ者あり〕'
     assert clean_speech(speech) == expected
-
-
-def test_extract_bill_action_types():
-    assert extract_bill_action_types('これより質疑に入ります。') == [BillActionType.QUESTION]
-    assert extract_bill_action_types('本案の趣旨の説明につきましては、これを省略します') == []
 
 
 def test_get_str_offset():

@@ -1,45 +1,12 @@
-import json
 import re
 import unicodedata
 from logging import getLogger
-from urllib.parse import urljoin
+
+from politylink.graphql.schema import BillActionType
 
 LOGGER = getLogger(__name__)
 KANSUJI = '〇一二三四五六七八九'
 KANSUJI_DIGIT = '十百千万'
-
-
-def extract_text(cell):
-    return cell.xpath('.//text()').get()
-
-
-def extract_full_href_or_none(cell, root_url):
-    selector = cell.xpath('.//a/@href')
-    if len(selector) > 0:
-        return urljoin(root_url, selector.get())
-    return None
-
-
-def extract_full_href_list(selector, root_url):
-    urls = []
-    for element in selector:
-        maybe_url = extract_full_href_or_none(element, root_url)
-        if maybe_url:
-            urls.append(maybe_url)
-    return urls
-
-
-def extract_json_ld_or_none(response):
-    maybe_text = response.xpath('//script[@type="application/ld+json"]//text()').get()
-    if not maybe_text:
-        return None
-    return json.loads(maybe_text)
-
-
-def extract_thumbnail_or_none(ld_json):
-    if 'image' not in ld_json or 'url' not in ld_json['image']:
-        return None
-    return ld_json['image']['url']
 
 
 def to_date_str(dt):
@@ -60,26 +27,12 @@ def clean_speech(speech):
 
 def is_moderator(speech):
     speaker = speech.split()[0]
-    moderators = ['議長', '委員長', '会長', '主査']
+    moderators = {'議長', '委員長', '会長', '主査'}
     return any([m in speaker for m in moderators])
 
 
 def strip_join(str_list, sep=''):
     return sep.join(map(lambda x: x.strip(), str_list))
-
-
-def validate_item_or_raise(obj, fields):
-    for field in fields:
-        if not hasattr(obj, field) or not getattr(obj, field):
-            raise ValueError(f'{type(obj)} does not have required field: {field}')
-
-
-def validate_news_or_raise(news):
-    validate_item_or_raise(news, ['id', 'title', 'published_at'])
-
-
-def validate_news_text_or_raise(news):
-    validate_item_or_raise(news, ['id', 'title', 'body'])
 
 
 def parse_name_str(name_str):
@@ -140,6 +93,26 @@ def extract_bill_category_or_none(text):
     elif contains_word(text, ['参議院提出', '参法']):
         return 'SANHOU'
     return None
+
+
+def extract_bill_action_types(speech):
+    action_lst = []
+    if contains_word(speech, ['説明'], ['省略', '終わり', '既に聴取']):
+        if contains_word(speech, ['修正案']):
+            action_lst.append(BillActionType.AMENDMENT_EXPLANATION)
+        elif contains_word(speech, ['附帯決議']):
+            action_lst.append(BillActionType.SUPPLEMENTARY_EXPLANATION)
+        elif contains_word(speech, ['趣旨の説明', '趣旨説明']):
+            action_lst.append(BillActionType.BILL_EXPLANATION)
+    if contains_word(speech, ['質疑']):
+        action_lst.append(BillActionType.QUESTION)
+    if contains_word(speech, ['討論']):
+        action_lst.append(BillActionType.DEBATE)
+    if contains_word(speech, ['採決']):
+        action_lst.append(BillActionType.VOTE)
+    if contains_word(speech, ['委員長の報告']):
+        action_lst.append(BillActionType.REPORT)
+    return action_lst
 
 
 def deduplicate(items):
