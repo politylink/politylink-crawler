@@ -4,12 +4,13 @@ from urllib.parse import urljoin
 import scrapy
 
 from crawler.utils import extract_text, build_url, UrlTitle, validate_news_or_raise, validate_news_text_or_raise, \
-    build_minutes_activity, extract_bill_number_or_none, extract_bill_category_or_none
+    build_minutes_activity
 from politylink.elasticsearch.client import ElasticsearchClient
 from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import News
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
+from politylink.utils.bill import extract_bill_number_or_none, extract_bill_category_or_none
 
 LOGGER = logging.getLogger(__name__)
 
