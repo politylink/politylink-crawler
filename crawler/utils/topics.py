@@ -5,7 +5,8 @@
 import re
 from logging import getLogger
 
-from crawler.utils.common import contains_word, get_str_offset, deduplicate
+from crawler.utils.common import contains_word
+from politylink.utils import get_str_offset, deduplicate
 
 LOGGER = getLogger(__name__)
 

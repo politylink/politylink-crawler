@@ -7,9 +7,10 @@ import scrapy
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import build_minutes, build_speech, extract_topics, build_url, UrlTitle, build_minutes_activity, \
-    clean_speech, extract_topic_ids, extract_bill_action_types, build_bill_action, is_moderator
+    clean_speech, extract_topic_ids, build_bill_action, is_moderator
 from politylink.elasticsearch.schema import MinutesText, SpeechText
 from politylink.nlp.keyphrase import KeyPhraseExtractor
+from politylink.utils.bill import extract_bill_action_types
 
 LOGGER = getLogger(__name__)
 

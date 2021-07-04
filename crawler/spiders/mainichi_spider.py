@@ -2,9 +2,10 @@ from datetime import datetime
 from logging import getLogger
 
 from crawler.spiders import NewsSpiderTemplate
-from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, strip_join, \
-    extract_thumbnail_or_none, extract_full_href_list, to_date_str
+from crawler.utils import build_news, to_neo4j_datetime, extract_json_ld_or_none, \
+    extract_thumbnail_or_none, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
+from politylink.utils import to_date_str, strip_join
 
 LOGGER = getLogger(__name__)
 

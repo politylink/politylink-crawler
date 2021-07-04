@@ -4,9 +4,10 @@ from logging import getLogger
 import scrapy
 
 from crawler.spiders import NewsSpiderTemplate
-from crawler.utils import extract_json_ld_or_none, build_news, extract_thumbnail_or_none, \
-    strip_join, to_neo4j_datetime, extract_full_href_list, to_date_str
+from crawler.utils import extract_json_ld_or_none, build_news, extract_thumbnail_or_none \
+    , to_neo4j_datetime, extract_full_href_list
 from politylink.elasticsearch.schema import NewsText
+from politylink.utils import strip_join, to_date_str
 
 LOGGER = getLogger(__name__)
 
