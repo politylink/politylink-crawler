@@ -1,4 +1,6 @@
 import json
+import re
+from datetime import datetime
 from urllib.parse import urljoin
 
 
@@ -33,3 +35,11 @@ def extract_thumbnail_or_none(ld_json):
     if 'image' not in ld_json or 'url' not in ld_json['image']:
         return None
     return ld_json['image']['url']
+
+
+def extract_datetime(dt_str):
+    pattern = r'(\d+)年(\d+)月(\d+)日'
+    m = re.search(pattern, dt_str)
+    if not m:
+        raise ValueError(f'{dt_str} does not match with {pattern}')
+    return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)))

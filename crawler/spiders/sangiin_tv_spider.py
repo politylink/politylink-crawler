@@ -1,11 +1,10 @@
 import re
-from datetime import datetime
 from logging import getLogger
 
 import scrapy
 
 from crawler.spiders import TvSpiderTemplate
-from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate
+from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate, extract_datetime
 
 LOGGER = getLogger(__name__)
 
@@ -82,7 +81,7 @@ class SangiinTvSpider(TvSpiderTemplate):
             term = dl.xpath('./dt/text()').get()
             desc = dl.xpath('./dd/text()').get()
             if term == '開会日':
-                date_time = datetime.strptime(desc, '%Y年%m月%d日')
+                date_time = extract_datetime(desc)
             elif term == '会議名':
                 meeting_name = desc.replace('、', '')
         if not (date_time and meeting_name):
