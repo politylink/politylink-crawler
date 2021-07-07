@@ -6,7 +6,7 @@ from typing import List
 import scrapy
 
 from crawler.spiders import TvSpiderTemplate
-from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate
+from crawler.utils import build_minutes, build_url, UrlTitle, deduplicate, extract_datetime
 
 LOGGER = getLogger(__name__)
 
@@ -83,7 +83,7 @@ class ShugiinTvSpider(TvSpiderTemplate):
             term = tds[1].xpath('.//text()').get()
             desc = tds[3].xpath('.//text()').get().split()[0]
             if term == '開会日':
-                date_time = datetime.strptime(desc, '%Y年%m月%d日')
+                date_time = extract_datetime(desc)
             if term == '会議名':
                 meeting_name = self.get_full_meeting_name(desc)
         if not (date_time and meeting_name):
