@@ -2,8 +2,9 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_member, extract_text, extract_full_href_or_none, UrlTitle, build_url, parse_name_str, \
-    extract_parliamentary_group_or_none
+from crawler.utils import parse_name_str
+from crawler.utils.graphql import build_member, build_url, UrlTitle
+from crawler.utils.scrape import extract_text, extract_full_href_or_none, extract_parliamentary_group_or_none
 from politylink.graphql.schema import Member
 
 LOGGER = getLogger(__name__)

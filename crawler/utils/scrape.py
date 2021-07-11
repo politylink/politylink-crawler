@@ -66,3 +66,12 @@ def extract_parliamentary_group_or_none(s: str):
         if s in names:
             return group
     return None
+
+
+def extract_parliamentary_groups(s: str, separator=';'):
+    groups = []
+    for ss in s.split(separator):
+        maybe_group = extract_parliamentary_group_or_none(ss.strip())
+        if maybe_group:
+            groups.append(maybe_group)
+    return groups
