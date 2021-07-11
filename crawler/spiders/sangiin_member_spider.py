@@ -2,7 +2,8 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_member, extract_text, extract_full_href_or_none, UrlTitle, build_url, parse_name_str
+from crawler.utils import build_member, extract_text, extract_full_href_or_none, UrlTitle, build_url, parse_name_str, \
+    extract_parliamentary_group_or_none
 from politylink.graphql.schema import Member
 
 LOGGER = getLogger(__name__)
@@ -11,7 +12,15 @@ LOGGER = getLogger(__name__)
 class SangiinMemberSpider(SpiderTemplate):
     name = 'sangiin_member'
     domain = 'sangiin.go.jp'
-    start_urls = ['https://www.sangiin.go.jp/japanese/joho1/kousei/giin/203/giin.htm']
+
+    def __init__(self, diet=None, *args, **kwargs):
+        super(SangiinMemberSpider, self).__init__(*args, **kwargs)
+        self.diet = self.get_diet(diet)
+        self.start_urls = [self.build_start_url(self.diet.number)]
+
+    @staticmethod
+    def build_start_url(diet_number):
+        return f'https://www.sangiin.go.jp/japanese/joho1/kousei/giin/{diet_number}/giin.htm'
 
     def parse(self, response):
         members, urls = self.scrape_members_and_urls(response)
@@ -64,9 +73,12 @@ class SangiinMemberSpider(SpiderTemplate):
                 extract_text(cells[2]).strip(),
                 extract_text(cells[3]).strip()
             ]
+            maybe_group = extract_parliamentary_group_or_none(tags[0])
             member = build_member(name)
             member.tags = tags
             member.house = 'COUNCILORS'
+            if maybe_group:
+                member.group = maybe_group
             members.append(member)
 
             maybe_href = extract_full_href_or_none(cells[0], response.url)

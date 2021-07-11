@@ -2,7 +2,8 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import build_member, extract_text, extract_full_href_or_none, UrlTitle, build_url, parse_name_str
+from crawler.utils import build_member, extract_text, extract_full_href_or_none, UrlTitle, build_url, parse_name_str, \
+    extract_parliamentary_group_or_none
 from politylink.graphql.schema import Member
 
 LOGGER = getLogger(__name__)
@@ -65,9 +66,12 @@ class ShugiinMemberSpider(SpiderTemplate):
                 extract_text(cells[2]).strip(),
                 extract_text(cells[3]).strip()
             ]
+            maybe_group = extract_parliamentary_group_or_none(tags[0])
             member = build_member(name)
             member.tags = tags
             member.house = 'REPRESENTATIVES'
+            if maybe_group:
+                member.group = maybe_group
             members.append(member)
 
             maybe_href = extract_full_href_or_none(cells[0], response.url)
