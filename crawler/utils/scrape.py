@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 from urllib.parse import urljoin
 
+from politylink.graphql.schema import ParliamentaryGroup
+
 
 def extract_text(cell):
     return cell.xpath('.//text()').get()
@@ -43,3 +45,33 @@ def extract_datetime(dt_str):
     if not m:
         raise ValueError(f'{dt_str} does not match with {pattern}')
     return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+
+def extract_parliamentary_group_or_none(s: str):
+    """
+    https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/shiryo/kaiha_m.htm
+    https://www.sangiin.go.jp/japanese/joho1/kousei/giin/kaiha/kaiha204.htm
+    """
+
+    groups_names = {
+        ParliamentaryGroup.JIMIN: {'自民', '自由民主党・無所属の会', '自由民主党・国民の声'},
+        ParliamentaryGroup.RIKKEN: {'立民', '立憲民主党・無所属', '立憲', '立憲民主・社民'},
+        ParliamentaryGroup.KOMEI: {'公明', '公明党'},
+        ParliamentaryGroup.KYOSAN: {'共産', '日本共産党'},
+        ParliamentaryGroup.ISHIN: {'維新', '日本維新の会・無所属の会', '日本維新の会'},
+        ParliamentaryGroup.KOKUMIN: {'国民', '国民民主党・無所属クラブ', '民主', '国民民主党・新緑風会'}
+    }
+
+    for group, names in groups_names.items():
+        if s in names:
+            return group
+    return None
+
+
+def extract_parliamentary_groups(s: str, separator=';'):
+    groups = []
+    for ss in s.split(separator):
+        maybe_group = extract_parliamentary_group_or_none(ss.strip())
+        if maybe_group:
+            groups.append(maybe_group)
+    return groups

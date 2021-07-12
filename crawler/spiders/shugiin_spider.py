@@ -1,8 +1,9 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, UrlTitle, BillCategory, \
-    build_bill_text
+from crawler.utils.elasticsearch import build_bill_text
+from crawler.utils.graphql import build_bill, build_url, UrlTitle, BillCategory
+from crawler.utils.scrape import extract_text, extract_full_href_or_none, extract_parliamentary_groups
 from politylink.elasticsearch.client import OpType
 from politylink.graphql.schema import Bill, Url
 
@@ -44,6 +45,8 @@ class ShugiinSpider(SpiderTemplate):
             assert isinstance(url, Url)
             if url.title == UrlTitle.HONBUN:
                 yield response.follow(url.url, callback=self.parse_honbun, meta=url.meta)
+            elif url.title == UrlTitle.KEIKA:
+                yield response.follow(url.url, callback=self.parse_keika, meta=url.meta)
 
     def parse_honbun(self, response):
         """
@@ -85,7 +88,36 @@ class ShugiinSpider(SpiderTemplate):
         bill.id = bill_id
         bill.reason = bill_text.reason
         self.gql_client.merge(bill)
-        LOGGER.info(f'merged reason in GraphQL for {bill_id} ')
+        LOGGER.info(f'merged reason in GraphQL for {bill_id}')
+
+    def parse_keika(self, response):
+        """
+       経過ページから賛成/反対会派を取得し、GraphQLに保存する
+        """
+
+        bill_id = response.meta['bill_id']
+        bill = Bill(None)
+        bill.id = bill_id
+
+        table = response.xpath('//table')[0]
+        for row in table.xpath('./tr')[1:]:  # skip header
+            cells = row.xpath('./td')
+            assert len(cells) == 2
+            key = extract_text(cells[0])
+            value = extract_text(cells[1])
+            if key and value:
+                if key == '衆議院審議時賛成会派':
+                    groups = extract_parliamentary_groups(value)
+                    if groups:
+                        bill.supported_groups = groups
+                elif key == '衆議院審議時反対会派':
+                    groups = extract_parliamentary_groups(value)
+                    if groups:
+                        bill.opposed_groups = groups
+
+        if hasattr(bill, 'supported_groups') or hasattr(bill, 'opposed_groups'):
+            self.gql_client.merge(bill)
+            LOGGER.info(f'merged groups in GraphQL for {bill_id}')
 
     @staticmethod
     def scrape_bills_and_urls(response):
