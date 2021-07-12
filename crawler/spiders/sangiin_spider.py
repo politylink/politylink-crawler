@@ -1,8 +1,8 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import extract_text, extract_full_href_or_none, build_bill, build_url, to_neo4j_datetime, UrlTitle, \
-    BillCategory, build_bill_activity
+from crawler.utils.graphql import build_bill, build_url, build_bill_activity, to_neo4j_datetime, UrlTitle, BillCategory
+from crawler.utils.scrape import extract_text, extract_full_href_or_none
 from politylink.graphql.schema import Url, Bill, House
 from politylink.utils import DateConverter
 
@@ -57,6 +57,9 @@ class SangiinSpider(SpiderTemplate):
         if bill.committee_ids:
             self.gql_client.bulk_link([bill.id] * len(bill.committee_ids), bill.committee_ids)
             LOGGER.debug(f'linked {bill.id} to {bill.committee_ids}')
+        if bill.member_ids:
+            self.gql_client.bulk_link(bill.member_ids, [bill.id] * len(bill.member_ids))
+            LOGGER.debug(f'linked {bill.id} to {bill.member_ids}')
         self.link_activities(activities)
 
     def scrape_bills_and_urls(self, response):
@@ -205,7 +208,7 @@ class SangiinSpider(SpiderTemplate):
             if key in data:
                 val = data[key].strip()
                 if val:
-                    return self.member_finder.find(val)
+                    return [member.id for member in self.member_finder.find(val)]
             return []
 
         tables = response.xpath('//table')
@@ -223,10 +226,11 @@ class SangiinSpider(SpiderTemplate):
         bill.is_passed = hasattr(bill, 'proclaimed_date') or \
                          (hasattr(bill, 'passed_representatives_date') and hasattr(bill, 'passed_councilors_date'))
         bill.committee_ids = extract_committee_ids()  # to link Committee to Bill
+        bill.member_ids = extract_member_ids()  # to link Member to Bill
 
         activity_list = []
-        for member in extract_member_ids():
-            activity = build_bill_activity(member.id, bill.id, bill.submitted_date)
+        for member_id in bill.member_ids:
+            activity = build_bill_activity(member_id, bill.id, bill.submitted_date)
             activity_list.append(activity)
 
         return bill, activity_list
