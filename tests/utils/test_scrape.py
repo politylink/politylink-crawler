@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from crawler.utils import extract_datetime, extract_parliamentary_group_or_none, extract_parliamentary_groups
+from crawler.utils.scrape import extract_datetime, extract_parliamentary_group_or_none, extract_parliamentary_groups
 from politylink.graphql.schema import ParliamentaryGroup
 
 

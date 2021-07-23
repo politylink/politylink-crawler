@@ -1,4 +1,4 @@
-from crawler.utils import parse_name_str, clean_speech
+from crawler.utils.common import parse_name_str, clean_speech
 
 
 def test_clean_speech():

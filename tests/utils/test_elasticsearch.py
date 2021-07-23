@@ -1,6 +1,6 @@
 import pytest
 
-from crawler.utils import build_bill_text
+from crawler.utils.elasticsearch import build_bill_text
 
 
 def test_build_bill_text():

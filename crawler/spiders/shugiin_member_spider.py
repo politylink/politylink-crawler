@@ -2,7 +2,8 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import parse_name_str
+from crawler.utils.common import parse_name_str
+from crawler.utils.elasticsearch import build_member_text
 from crawler.utils.graphql import build_member, build_url, UrlTitle
 from crawler.utils.scrape import extract_text, extract_full_href_or_none, extract_parliamentary_group_or_none
 from politylink.graphql.schema import Member
@@ -13,8 +14,12 @@ LOGGER = getLogger(__name__)
 class ShugiinMemberSpider(SpiderTemplate):
     name = 'shugiin_member'
     domain = 'shugiin.go.jp'
-    start_urls = [f'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/{i}giin.htm'
-                  for i in range(1, 11)]
+
+    def __init__(self, text='false', *args, **kwargs):
+        super(ShugiinMemberSpider, self).__init__(*args, **kwargs)
+        self.collect_text = text == 'true'
+        self.start_urls = [f'http://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/{i}giin.htm'
+                           for i in range(1, 11)]
 
     def parse(self, response):
         members, urls = self.scrape_members_and_urls(response)
@@ -54,6 +59,11 @@ class ShugiinMemberSpider(SpiderTemplate):
 
         self.gql_client.merge(member)
         LOGGER.info(f'merged details for {member.id}')
+
+        if self.collect_text:
+            member_text = build_member_text(member)
+            self.es_client.index(member_text)
+            LOGGER.info(f'merged MemberText in Elasticsearch for {member.id}')
 
     def scrape_members_and_urls(self, response):
         members, urls = [], []

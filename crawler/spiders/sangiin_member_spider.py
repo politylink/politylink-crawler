@@ -2,7 +2,8 @@ from logging import getLogger
 from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils import parse_name_str
+from crawler.utils.common import parse_name_str
+from crawler.utils.elasticsearch import build_member_text
 from crawler.utils.graphql import build_member, build_url, UrlTitle
 from crawler.utils.scrape import extract_text, extract_full_href_or_none, extract_parliamentary_group_or_none
 from politylink.graphql.schema import Member
@@ -14,9 +15,10 @@ class SangiinMemberSpider(SpiderTemplate):
     name = 'sangiin_member'
     domain = 'sangiin.go.jp'
 
-    def __init__(self, diet=None, *args, **kwargs):
+    def __init__(self, diet=None, text='false', *args, **kwargs):
         super(SangiinMemberSpider, self).__init__(*args, **kwargs)
         self.diet = self.get_diet(diet)
+        self.collect_text = text == 'true'
         self.start_urls = [self.build_start_url(self.diet.number)]
 
     @staticmethod
@@ -61,6 +63,11 @@ class SangiinMemberSpider(SpiderTemplate):
 
         self.gql_client.merge(member)
         LOGGER.info(f'merged details for {member.id}')
+
+        if self.collect_text:
+            member_text = build_member_text(member)
+            self.es_client.index(member_text)
+            LOGGER.info(f'merged MemberText in Elasticsearch for {member.id}')
 
     def scrape_members_and_urls(self, response):
         members, urls = [], []
