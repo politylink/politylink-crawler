@@ -1,4 +1,4 @@
-from crawler.utils import extract_topics, clean_topic, split_topic
+from crawler.utils.topics import extract_topics, clean_topic, split_topic
 
 
 def test_clean_topic():

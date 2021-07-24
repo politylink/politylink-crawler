@@ -92,7 +92,7 @@ class ShugiinSpider(SpiderTemplate):
 
     def parse_keika(self, response):
         """
-       経過ページから賛成/反対会派を取得し、GraphQLに保存する
+        経過ページから賛成/反対会派を取得し、GraphQLに保存する
         """
 
         bill_id = response.meta['bill_id']
