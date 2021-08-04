@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils import extract_text, build_url, UrlTitle
+from politylink.graphql.schema import Minutes
 from politylink.utils import DateConverter
 
 LOGGER = getLogger(__name__)
@@ -54,7 +55,7 @@ class SangiinMinutesSpider(SpiderTemplate):
                 LOGGER.warning(
                     f'found {len(minutes_list)} Minutes that match with ({committee_name}, {dt}): {minutes_list}')
             for minutes in minutes_list:
-                minutes.summary = summary
+                minutes = Minutes({'id': minutes.id, 'summary': summary})
                 self.gql_client.merge(minutes)
                 self.gql_client.link(url.id, minutes.id)
 
