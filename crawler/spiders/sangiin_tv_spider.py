@@ -37,7 +37,7 @@ class SangiinTvSpider(TvSpiderTemplate):
         }
         """
         data = self.gql_client.exec(query)
-        for minutes in data['minutes']:
+        for minutes in data['Minutes']:
             for url in minutes['urls']:
                 if url['title'] == UrlTitle.SHINGI_TYUKEI.value:
                     sid = int(re.search('sid=(\d+)', url['url']).group(1))
