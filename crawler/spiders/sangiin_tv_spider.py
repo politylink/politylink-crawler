@@ -31,19 +31,18 @@ class SangiinTvSpider(TvSpiderTemplate):
     def get_last_sid(self):
         query = """
         {
-          Minutes(orderBy:startDateTime_desc, first:1, filter:{name_contains:"参議院"}) {
+          Minutes(orderBy:startDateTime_desc, first:10, filter:{name_contains:"参議院"}) {
             urls{title, url}
           }
         }
         """
         data = self.gql_client.exec(query)
-        if len(data['Minutes']) == 0:
-            raise ValueError(f'Minutes does not exist in GraphQL response: {data}')
-        for url in data['Minutes'][0]['urls']:
-            if url['title'] == UrlTitle.SHINGI_TYUKEI.value:
-                sid = int(re.search('sid=(\d+)', url['url']).group(1))
-                return sid
-        raise ValueError(f'sid does not exist in GraphQL response: {data}')
+        for minutes in data['Minutes']:
+            for url in minutes['urls']:
+                if url['title'] == UrlTitle.SHINGI_TYUKEI.value:
+                    sid = int(re.search('sid=(\d+)', url['url']).group(1))
+                    return sid
+        raise ValueError('sid does not found in the latest {} minutes'.format(len(data['minutes'])))
 
     def build_next_url(self):
         self.next_id += 1
