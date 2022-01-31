@@ -38,8 +38,8 @@ class NikkeiSpider(NewsSpiderTemplate):
             yield response.follow(self.build_next_url(), self.parse)
 
     def scrape_news_and_text(self, response):
-        title = strip_join(response.css('h1.title_tyodebu').xpath('.//text()').getall(), sep=' ')
-        body = strip_join(response.css('section.container_cz8tiun').xpath('.//p/text()').getall())
+        title = strip_join(response.css('h1.title_tp0qjrp').xpath('.//text()').getall(), sep=' ')
+        body = strip_join(response.css('section.container_c1suc6un').xpath('.//p/text()').getall())
 
         news = build_news(response.url, self.publisher)
         news.title = title
@@ -49,7 +49,7 @@ class NikkeiSpider(NewsSpiderTemplate):
         news_text.title = title
         news_text.body = body
 
-        maybe_published_at_str = response.css('div.TimeStamp_t165nkxq').xpath('.//time/@datetime').get()
+        maybe_published_at_str = response.css('div.TimeStamp_t1ja1yd3').xpath('.//time/@datetime').get()
         if maybe_published_at_str:
             news.published_at = self.to_datetime2(maybe_published_at_str)
             news_text.date = to_date_str(news.published_at)
