@@ -5,7 +5,7 @@ class SoumuSpider(TableSpiderTemplate):
     name = 'soumu'  # 総務省
     domain = 'soumu.go.jp'
     bill_category = 'KAKUHOU'
-    diet_number = 204
+    diet_number = 208
 
     table_idx = 0
     bill_col = 1

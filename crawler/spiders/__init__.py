@@ -193,7 +193,7 @@ class TableSpiderTemplate(SpiderTemplate):
     def store_urls_for_bill(self, urls, bill_query, bill_category=None, diet_number=None):
         if not urls:
             return
-        kwargs = dict()
+        kwargs = {'exact_match': True}
         if bill_category:
             kwargs['category'] = bill_category
         if diet_number:
