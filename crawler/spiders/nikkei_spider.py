@@ -49,7 +49,7 @@ class NikkeiSpider(NewsSpiderTemplate):
         news_text.title = title
         news_text.body = body
 
-        maybe_published_at_str = response.css('div.TimeStamp_t1ja1yd3').xpath('.//time/@datetime').get()
+        maybe_published_at_str = response.css('div.TimeStamp_txhkndn').xpath('.//time/@datetime').get()
         if maybe_published_at_str:
             news.published_at = self.to_datetime2(maybe_published_at_str)
             news_text.date = to_date_str(news.published_at)
