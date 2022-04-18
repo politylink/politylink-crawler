@@ -54,7 +54,7 @@ def extract_parliamentary_group_or_none(s: str):
     """
 
     groups_names = {
-        ParliamentaryGroup.JIMIN: {'自民', '自由民主党・無所属の会', '自由民主党・国民の声'},
+        ParliamentaryGroup.JIMIN: {'自民', '自由民主党・無所属の会', '自由民主党・国民の声', '自由民主党'},
         ParliamentaryGroup.RIKKEN: {'立民', '立憲民主党・無所属', '立憲', '立憲民主・社民'},
         ParliamentaryGroup.KOMEI: {'公明', '公明党'},
         ParliamentaryGroup.KYOSAN: {'共産', '日本共産党'},

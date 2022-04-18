@@ -55,7 +55,7 @@ class SangiinTvSpider(TvSpiderTemplate):
         try:
             minutes, activity_list, url_list = self.scrape_minutes_activities_urls(response)
         except Exception:
-            LOGGER.exception(f'failed to parse minutes from {response.url}')
+            LOGGER.warning(f'failed to parse minutes from {response.url}')
             self.failure_in_row += 1
             if self.next_id < self.last_id and self.failure_in_row < self.failure_in_row_limit:
                 yield response.follow(self.build_next_url(), callback=self.parse)
