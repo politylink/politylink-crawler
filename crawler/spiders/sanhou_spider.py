@@ -6,7 +6,7 @@ class SanhouSpider(DietTableSpiderTemplate):
     domain = 'sangiin.go.jp'
     bill_category = 'SANHOU'
 
-    table_idx = 1
+    table_idx = 0
     bill_col = 1
     url_col = 3
 
