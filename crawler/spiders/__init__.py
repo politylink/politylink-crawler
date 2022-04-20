@@ -10,7 +10,6 @@ from politylink.elasticsearch.schema import NewsText
 from politylink.graphql.client import GraphQLClient
 from politylink.graphql.schema import News
 from politylink.helpers import BillFinder, MinutesFinder, CommitteeFinder, MemberFinder
-from politylink.utils.bill import extract_bill_number_or_none, extract_bill_category_or_none
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,21 +124,14 @@ class SpiderTemplate(scrapy.Spider):
         diets = sorted(self.gql_client.get_all_diets(['id', 'number', 'start_date']), key=lambda x: x.number)
         return diets[-1]
 
-    def get_topic_ids(self, topics):
+    def get_topic_ids(self, topics, date):
         def get_topic_id(topic):
-            maybe_bill_number = extract_bill_number_or_none(topic)
-            maybe_category = extract_bill_category_or_none(topic)
             try:
-                if maybe_bill_number:
-                    bill = self.bill_finder.find_one(maybe_bill_number)
-                elif maybe_category:
-                    bill = self.bill_finder.find_one(topic, category=maybe_category)
-                else:
-                    bill = self.bill_finder.find_one(topic)
+                bill = self.bill_finder.find_one(text=topic, date=date)
                 return bill.id
             except ValueError as e:
                 LOGGER.debug(e)  # this is expected when topic does not include bill
-            return ''
+                return ''
 
         return list(map(lambda x: get_topic_id(x), topics))
 

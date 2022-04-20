@@ -102,7 +102,7 @@ class MinutesSpider(SpiderTemplate):
                 topics = extract_topics(meeting_rec['speechRecord'][0]['speech'])
                 if topics:
                     minutes.topics = topics
-                    minutes.topic_ids = self.get_topic_ids(topics)
+                    minutes.topic_ids = self.get_topic_ids(topics, minutes.start_date_time)
                 else:
                     LOGGER.warning(f'failed to extract topic for {minutes}')
             except ValueError as e:

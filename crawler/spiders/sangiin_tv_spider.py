@@ -95,7 +95,7 @@ class SangiinTvSpider(TvSpiderTemplate):
         if topics:
             LOGGER.debug(f'scraped topics={topics}')
             minutes.topics = topics
-            minutes.topic_ids = self.get_topic_ids(topics)
+            minutes.topic_ids = self.get_topic_ids(topics, minutes.start_date_time)
         speakers = content.xpath('./ul/li/a/text()').getall()
         speakers = deduplicate(speakers)
         if speakers:
