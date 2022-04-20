@@ -124,7 +124,7 @@ class SpiderTemplate(scrapy.Spider):
         diets = sorted(self.gql_client.get_all_diets(['id', 'number', 'start_date']), key=lambda x: x.number)
         return diets[-1]
 
-    def get_topic_ids(self, topics, date=None):
+    def get_topic_ids(self, topics, date):
         def get_topic_id(topic):
             try:
                 bill = self.bill_finder.find_one(text=topic, date=date)
