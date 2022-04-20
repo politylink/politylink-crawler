@@ -96,7 +96,7 @@ class ShugiinTvSpider(TvSpiderTemplate):
         if topics:
             LOGGER.debug(f'scraped topics={topics}')
             minutes.topics = topics
-            minutes.topic_ids = self.get_topic_ids(topics)
+            minutes.topic_ids = self.get_topic_ids(topics, minutes.start_date_time)
         speakers = self.scrape_table(tables[2], first_section_only=True)
         speakers = deduplicate(speakers)
         if speakers:
