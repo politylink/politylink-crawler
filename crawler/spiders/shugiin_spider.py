@@ -2,10 +2,10 @@ from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
 from crawler.utils.elasticsearch import build_bill_text
-from crawler.utils.graphql import build_bill, build_url, UrlTitle, BillCategory
+from crawler.utils.graphql import build_bill, build_url, UrlTitle
 from crawler.utils.scrape import extract_text, extract_full_href_or_none, extract_parliamentary_groups
 from politylink.elasticsearch.client import OpType
-from politylink.graphql.schema import Bill, Url
+from politylink.graphql.schema import Bill, Url, BillCategory
 
 LOGGER = getLogger(__name__)
 

@@ -1,9 +1,9 @@
 from logging import getLogger
 
 from crawler.spiders import SpiderTemplate
-from crawler.utils.graphql import build_bill, build_url, build_bill_activity, to_neo4j_datetime, UrlTitle, BillCategory
+from crawler.utils.graphql import build_bill, build_url, build_bill_activity, to_neo4j_datetime, UrlTitle
 from crawler.utils.scrape import extract_text, extract_full_href_or_none
-from politylink.graphql.schema import Url, Bill, House
+from politylink.graphql.schema import Url, Bill, House, BillCategory
 from politylink.utils import DateConverter
 
 LOGGER = getLogger(__name__)
