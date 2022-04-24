@@ -19,7 +19,7 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, pos=1, text='false', keyphrase='true', overwrite='false',
+    def __init__(self, start_date, end_date, pos=1, text='false', keyphrase='false', overwrite='false',
                  *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
