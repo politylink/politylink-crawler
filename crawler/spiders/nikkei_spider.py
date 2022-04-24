@@ -15,7 +15,7 @@ class NikkeiSpider(NewsSpiderTemplate):
     name = 'nikkei'
     publisher = '日経新聞'
 
-    def __init__(self, limit, *args, **kwargs):
+    def __init__(self, limit=50, *args, **kwargs):
         super(NikkeiSpider, self).__init__(*args, **kwargs)
         self.limit = int(limit)
         self.news_count = 0
@@ -29,12 +29,15 @@ class NikkeiSpider(NewsSpiderTemplate):
         yield scrapy.Request(self.build_next_url(), self.parse)
 
     def parse(self, response):
-        news_url_list = extract_full_href_list(response.css('div.m-miM09'), response.url)
-        LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
+        if self.news_url_list:
+            news_url_list = self.news_url_list
+        else:
+            news_url_list = extract_full_href_list(response.css('div.m-miM09'), response.url)
+            LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             yield response.follow(news_url, callback=self.parse_news)
         self.news_count += len(news_url_list)
-        if self.news_count < self.limit:
+        if (not self.news_url_list) and (self.news_count < self.limit):
             yield response.follow(self.build_next_url(), self.parse)
 
     def scrape_news_and_text(self, response):

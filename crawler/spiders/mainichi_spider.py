@@ -19,8 +19,11 @@ class MainichiSpider(NewsSpiderTemplate):
         super(MainichiSpider, self).__init__(*args, **kwargs)
 
     def parse(self, response):
-        news_url_list = extract_full_href_list(response.xpath('//section[@id="article-list"]//li'), response.url)
-        LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
+        if self.news_url_list:
+            news_url_list = self.news_url_list
+        else:
+            news_url_list = extract_full_href_list(response.xpath('//section[@id="article-list"]//li'), response.url)
+            LOGGER.info(f'scraped {len(news_url_list)} news urls from {response.url}')
         for news_url in news_url_list:
             if 'premier' not in news_url:  # ToDo: process premier article
                 yield response.follow(news_url, callback=self.parse_news)
