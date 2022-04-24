@@ -240,6 +240,13 @@ class TvSpiderTemplate(SpiderTemplate):
 
 
 class NewsSpiderTemplate(SpiderTemplate):
+    def __init__(self, file=None, *args, **kwargs):
+        super(NewsSpiderTemplate, self).__init__(*args, **kwargs)
+        self.news_url_list = list()
+        if file:
+            self.news_url_list += [line.strip() for line in open(file, 'r')]
+            LOGGER.info(f'loaded {len(self.news_url_list)} news from {file}')
+
     def parse_news(self, response):
         """
         NewsとNewsTextをGraphQLとElasticSearchにそれぞれ保存する
