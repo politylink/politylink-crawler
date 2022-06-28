@@ -19,12 +19,13 @@ class MinutesSpider(SpiderTemplate):
     name = 'minutes'
     domain = 'ndl.go.jp'
 
-    def __init__(self, start_date, end_date, pos=1, text='false', keyphrase='false', overwrite='false',
+    def __init__(self, start_date, end_date, pos=1, text='true', speech='false', keyphrase='false', overwrite='false',
                  *args, **kwargs):
         super(MinutesSpider, self).__init__(*args, **kwargs)
         self.start_date = start_date
         self.end_date = end_date
         self.collect_text = text == 'true'
+        self.collect_speech_text = speech == 'true'
         self.collect_keyphrase = keyphrase == 'true'
         self.overwrite_url = overwrite == 'true'
         self.next_pos = int(pos)
@@ -82,6 +83,7 @@ class MinutesSpider(SpiderTemplate):
         if self.collect_text:
             self.es_client.bulk_index(minutes_text_lst)
             LOGGER.info(f'merged {len(minutes_text_lst)} minutes texts')
+        if self.collect_speech_text:
             self.es_client.bulk_index(speech_text_lst)
             LOGGER.info(f'merged {len(speech_text_lst)} speech texts')
 
