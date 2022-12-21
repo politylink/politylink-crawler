@@ -6,8 +6,9 @@ from enum import Enum
 from logging import getLogger
 
 from politylink.graphql.schema import Bill, Url, Minutes, Speech, Committee, News, Member, Diet, \
-    Activity, BillAction, _Neo4jDateTimeInput
+    Activity, BillAction, _Neo4jDateTimeInput, BillCategory
 from politylink.idgen import idgen
+from politylink.utils.bill import encode_bill_number
 
 LOGGER = getLogger(__name__)
 
@@ -27,18 +28,12 @@ class UrlTitle(str, Enum):
     VRSDD = '国会審議映像検索システム'
 
 
-class BillCategory(str, Enum):
-    KAKUHOU = '閣法'
-    SHUHOU = '衆法'
-    SANHOU = '参法'
-
-
 def build_bill(bill_category, diet_number, submission_number, bill_name):
     bill = Bill(None)
     assert isinstance(bill_category, BillCategory)
-    bill.category = bill_category.name
+    bill.category = bill_category
     bill.name = bill_name
-    bill.bill_number = f'第{diet_number}回国会{bill_category.value}第{submission_number}号'
+    bill.bill_number = encode_bill_number(diet_number, bill_category, submission_number)
     bill.id = idgen(bill)
     return bill
 
